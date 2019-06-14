@@ -16,7 +16,7 @@ set(CMAKE_DISABLE_SOURCE_CHANGES ON)
 set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 
 # Set projectname (must be done AFTER setting configurationtypes)
-project(BFACore)
+project(CoreTeaM)
 
 # CMake policies (can not be handled elsewhere)
 cmake_policy(SET CMP0005 OLD)
@@ -26,6 +26,10 @@ endif()
 
 if(POLICY CMP0054)
   cmake_policy(SET CMP0054 NEW) # Only interpret if() arguments as variables or keywords when unquoted - prevents intepreting if (SOME_STRING_VARIABLE MATCHES "MSVC") as if (SOME_STRING_VARIABLE MATCHES "1")
+endif()
+
+if (POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW) # In our case use new way to treat BOOST_ROOT environement variable
 endif()
 
 # Set RPATH-handing (CMake parameters)
