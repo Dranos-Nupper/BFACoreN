@@ -1,0 +1,7 @@
+REPLACE INTO `playercreateinfo` VALUES (36, 1, 1, 14, 1968.49, -4744.04, 37.188, 1.2911);
+REPLACE INTO `playercreateinfo` VALUES (36, 3, 1, 14, 1968.49, -4744.04, 37.188, 1.2911);
+REPLACE INTO `playercreateinfo` VALUES (36, 4, 1, 14, 1968.49, -4744.04, 37.188, 1.2911);
+REPLACE INTO `playercreateinfo` VALUES (36, 5, 1, 14, 1968.49, -4744.04, 37.188, 1.2911);
+REPLACE INTO `playercreateinfo` VALUES (36, 7, 1, 14, 1968.49, -4744.04, 37.188, 1.2911);
+REPLACE INTO `playercreateinfo` VALUES (36, 8, 1, 14, 1968.49, -4744.04, 37.188, 1.2911);
+REPLACE INTO `playercreateinfo` VALUES (36, 10, 1, 14, 1968.49, -4744.04, 37.188, 1.2911);

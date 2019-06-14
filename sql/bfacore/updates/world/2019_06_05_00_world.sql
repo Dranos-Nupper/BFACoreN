@@ -1,0 +1,46 @@
+/*Contributed by Nupper/Felstrider */
+REPLACE INTO `access_requirement` VALUES (1754, 1, 110, 0, 0, 0, 0, 0, 0, NULL, 'Freehold (Entrance) - Normal');
+REPLACE INTO `access_requirement` VALUES (1754, 2, 120, 0, 0, 0, 0, 0, 0, NULL, 'Freehold (Entrance) - Heroic');
+REPLACE INTO `access_requirement` VALUES (1754, 23, 120, 0, 0, 0, 0, 0, 0, NULL, 'Freehold (Entrance) - Mythic');
+REPLACE INTO `access_requirement` VALUES (1754, 8, 120, 0, 0, 0, 0, 0, 0, NULL, 'Freehold (Entrance) - Mythic Keystone');
+REPLACE INTO `access_requirement` VALUES (1763, 1, 110, 0, 0, 0, 0, 0, 0, NULL, 'Atal\'Dazar (Entrance) - Normal');
+REPLACE INTO `access_requirement` VALUES (1763, 2, 120, 0, 0, 0, 0, 0, 0, NULL, 'Atal\'Dazar (Entrance) - Heroic');
+REPLACE INTO `access_requirement` VALUES (1763, 23, 120, 0, 0, 0, 0, 0, 0, NULL, 'Atal\'Dazar (Entrance) - Mythic');
+REPLACE INTO `access_requirement` VALUES (1763, 8, 120, 0, 0, 0, 0, 0, 0, NULL, 'Atal\'Dazar (Entrance) - Mythic Keystone');
+REPLACE INTO `access_requirement` VALUES (1822, 23, 120, 0, 0, 0, 0, 0, 0, NULL, 'Siege of Boralus (Entrance) - Mythic');
+REPLACE INTO `access_requirement` VALUES (1822, 8, 120, 0, 0, 0, 0, 0, 0, NULL, 'Siege of Boralus (Entrance) - Mythic Keystone');
+REPLACE INTO `access_requirement` VALUES (1822, 2, 120, 0, 0, 0, 0, 0, 0, NULL, 'Siege of Boralus (Entrance) - Heroic (8.1.0)');
+REPLACE INTO `access_requirement` VALUES (1771, 1, 115, 0, 0, 0, 0, 0, 0, NULL, 'Tol Dagor (Entrance) - Normal');
+REPLACE INTO `access_requirement` VALUES (1771, 2, 120, 0, 0, 0, 0, 0, 0, NULL, 'Tol Dagor (Entrance) - Heroic');
+REPLACE INTO `access_requirement` VALUES (1771, 23, 120, 0, 0, 0, 0, 0, 0, NULL, 'Tol Dagor (Entrance) - Mythic');
+REPLACE INTO `access_requirement` VALUES (1771, 8, 120, 0, 0, 0, 0, 0, 0, NULL, 'Tol Dagor (Entrance) - Mythic Keystone');
+REPLACE INTO `access_requirement` VALUES (1762, 2, 120, 0, 0, 0, 0, 0, 0, NULL, 'Kings\' Rest (Entrance) - Heroic (8.1.0)');
+REPLACE INTO `access_requirement` VALUES (1762, 23, 120, 0, 0, 0, 0, 0, 0, NULL, 'Kings\' Rest (Entrance) - Mythic');
+REPLACE INTO `access_requirement` VALUES (1762, 8, 120, 0, 0, 0, 0, 0, 0, NULL, 'Kings\' Rest (Entrance) - Mythic Keystone');
+REPLACE INTO `access_requirement` VALUES (1862, 1, 110, 0, 0, 0, 0, 0, 0, NULL, 'Waycrest Manor (Entrance) - Normal');
+REPLACE INTO `access_requirement` VALUES (1862, 2, 120, 0, 0, 0, 0, 0, 0, NULL, 'Waycrest Manor (Entrance) - Heroic');
+REPLACE INTO `access_requirement` VALUES (1862, 23, 120, 0, 0, 0, 0, 0, 0, NULL, 'Waycrest Manor (Entrance) - Mythic');
+REPLACE INTO `access_requirement` VALUES (1862, 8, 120, 0, 0, 0, 0, 0, 0, NULL, 'Waycrest Manor (Entrance) - Mythic Keystone');
+REPLACE INTO `access_requirement` VALUES (1594, 1, 115, 0, 0, 0, 0, 0, 0, NULL, 'The MOTHERLODE!! (Entrance) - Normal');
+REPLACE INTO `access_requirement` VALUES (1594, 2, 120, 0, 0, 0, 0, 0, 0, NULL, 'The MOTHERLODE!! (Entrance) - Heroic');
+REPLACE INTO `access_requirement` VALUES (1594, 23, 120, 0, 0, 0, 0, 0, 0, NULL, 'The MOTHERLODE!! (Entrance) - Mythic');
+REPLACE INTO `access_requirement` VALUES (1594, 8, 120, 0, 0, 0, 0, 0, 0, NULL, 'The MOTHERLODE!! (Entrance) - Mythic Keystone');
+REPLACE INTO `access_requirement` VALUES (1877, 1, 110, 0, 0, 0, 0, 0, 0, NULL, 'Temple of Sethraliss (Entrance) - Normal');
+REPLACE INTO `access_requirement` VALUES (1877, 2, 120, 0, 0, 0, 0, 0, 0, NULL, 'Temple of Sethraliss (Entrance) - Heroic');
+REPLACE INTO `access_requirement` VALUES (1877, 23, 120, 0, 0, 0, 0, 0, 0, NULL, 'Temple of Sethraliss (Entrance) - Mythic');
+REPLACE INTO `access_requirement` VALUES (1877, 8, 120, 0, 0, 0, 0, 0, 0, NULL, 'Temple of Sethraliss (Entrance) - Mythic Keystone');
+REPLACE INTO `access_requirement` VALUES (1861, 14, 120, 0, 0, 0, 0, 0, 0, NULL, 'Uldir (Entrance) - 30 Normal');
+REPLACE INTO `access_requirement` VALUES (1861, 15, 120, 0, 0, 0, 0, 0, 0, NULL, 'Uldir (Entrance) - 30 Heroic');
+REPLACE INTO `access_requirement` VALUES (1861, 16, 120, 0, 0, 0, 0, 0, 0, NULL, 'Uldir (Entrance) - 20 Mythic');
+REPLACE INTO `access_requirement` VALUES (1861, 17, 120, 0, 0, 0, 0, 0, 0, NULL, 'Uldir (Entrance) - 20 LFR');
+REPLACE INTO `access_requirement` VALUES (1841, 1, 110, 0, 0, 0, 0, 0, 0, NULL, 'Underrot (Entrance) - Normal');
+REPLACE INTO `access_requirement` VALUES (1841, 2, 120, 0, 0, 0, 0, 0, 0, NULL, 'Underrot (Entrance) - Heroic');
+REPLACE INTO `access_requirement` VALUES (1841, 23, 120, 0, 0, 0, 0, 0, 0, NULL, 'Underrot (Entrance) - Mythic');
+REPLACE INTO `access_requirement` VALUES (1841, 8, 120, 0, 0, 0, 0, 0, 0, NULL, 'Underrot (Entrance) - Mythic Keystone');
+REPLACE INTO `access_requirement` VALUES (1864, 1, 110, 0, 0, 0, 0, 0, 0, NULL, 'Shrine of the Storm (Entrance) - Normal');
+REPLACE INTO `access_requirement` VALUES (1864, 2, 120, 0, 0, 0, 0, 0, 0, NULL, 'Shrine of the Storm (Entrance) - Heroic');
+REPLACE INTO `access_requirement` VALUES (1864, 23, 120, 0, 0, 0, 0, 0, 0, NULL, 'Shrine of the Storm (Entrance) - Mythic');
+REPLACE INTO `access_requirement` VALUES (1864, 8, 120, 0, 0, 0, 0, 0, 0, NULL, 'Shrine of the Storm (Entrance) - Mythic Keystone');
+
+replace into `quest_template` (`ID`, `QuestType`, `QuestLevel`, `ScalingFactionGroup`, `MaxScalingLevel`, `QuestPackageID`, `MinLevel`, `QuestSortID`, `QuestInfoID`, `SuggestedGroupNum`, `RewardNextQuest`, `RewardXPDifficulty`, `RewardXPMultiplier`, `RewardMoney`, `RewardMoneyDifficulty`, `RewardMoneyMultiplier`, `RewardBonusMoney`, `RewardDisplaySpell1`, `RewardDisplaySpell2`, `RewardDisplaySpell3`, `RewardSpell`, `RewardHonor`, `RewardKillHonor`, `StartItem`, `RewardArtifactXPDifficulty`, `RewardArtifactXPMultiplier`, `RewardArtifactCategoryID`, `Flags`, `FlagsEx`, `FlagsEx2`, `RewardItem1`, `RewardAmount1`, `RewardItem2`, `RewardAmount2`, `RewardItem3`, `RewardAmount3`, `RewardItem4`, `RewardAmount4`, `ItemDrop1`, `ItemDropQuantity1`, `ItemDrop2`, `ItemDropQuantity2`, `ItemDrop3`, `ItemDropQuantity3`, `ItemDrop4`, `ItemDropQuantity4`, `RewardChoiceItemID1`, `RewardChoiceItemQuantity1`, `RewardChoiceItemDisplayID1`, `RewardChoiceItemID2`, `RewardChoiceItemQuantity2`, `RewardChoiceItemDisplayID2`, `RewardChoiceItemID3`, `RewardChoiceItemQuantity3`, `RewardChoiceItemDisplayID3`, `RewardChoiceItemID4`, `RewardChoiceItemQuantity4`, `RewardChoiceItemDisplayID4`, `RewardChoiceItemID5`, `RewardChoiceItemQuantity5`, `RewardChoiceItemDisplayID5`, `RewardChoiceItemID6`, `RewardChoiceItemQuantity6`, `RewardChoiceItemDisplayID6`, `POIContinent`, `POIx`, `POIy`, `POIPriority`, `RewardTitle`, `RewardArenaPoints`, `RewardSkillLineID`, `RewardNumSkillUps`, `PortraitGiver`, `PortraitGiverMount`, `PortraitTurnIn`, `RewardFactionID1`, `RewardFactionValue1`, `RewardFactionOverride1`, `RewardFactionCapIn1`, `RewardFactionID2`, `RewardFactionValue2`, `RewardFactionOverride2`, `RewardFactionCapIn2`, `RewardFactionID3`, `RewardFactionValue3`, `RewardFactionOverride3`, `RewardFactionCapIn3`, `RewardFactionID4`, `RewardFactionValue4`, `RewardFactionOverride4`, `RewardFactionCapIn4`, `RewardFactionID5`, `RewardFactionValue5`, `RewardFactionOverride5`, `RewardFactionCapIn5`, `RewardFactionFlags`, `RewardCurrencyID1`, `RewardCurrencyQty1`, `RewardCurrencyID2`, `RewardCurrencyQty2`, `RewardCurrencyID3`, `RewardCurrencyQty3`, `RewardCurrencyID4`, `RewardCurrencyQty4`, `AcceptedSoundKitID`, `CompleteSoundKitID`, `AreaGroupID`, `TimeAllowed`, `AllowableRaces`, `TreasurePickerID`, `Expansion`, `LogTitle`, `LogDescription`, `QuestDescription`, `AreaDescription`, `PortraitGiverText`, `PortraitGiverName`, `PortraitTurnInText`, `PortraitTurnInName`, `QuestCompletionLog`, `VerifiedBuild`) 
+values('126870','0','55','0','255','0','55','-372','21','0','0','8','1','8500','5','1','105000','48778','0','0','52382','0','0','0','0','1','0','130','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','0','7','0','0','0','7','0','0','0','7','0','0','0','7','0','0','0','7','0','0','0','0','0','0','0','0','0','890','878','0','0','18446744073709551615','0','1','Into the Realm of Shadows','Salanar the Horseman at Death\'s Breach has challenged you to slay the Dark Rider of Acherus and take his Acherus Deathcharger.$B$BShould you succeed, return the Acherus Deathcharger to Death\'s Breach and use the Horseman\'s Call to summon Salanar.','The horse you stole has been taken to the Realm of Shadows. It is there that my dark rider will slay the beast and raise it as a deathcharger. Do you think yourself brave enough to enter the Realm of Shadows in pursuit of the deathcharger?$B$BIf you accept, I will transport you to the shadow world. Once there, seek out a dark rider in the open fields south of us. To emerge victorious you must slay him, overtake his deathcharger and return it to Death\'s Breach. Issue the Horseman\'s Call should you succeed.','The Horseman\'s Challenge',NULL,NULL,NULL,NULL,'Return to Salanar the Horseman at Death\'s Breach in Plaguelands: The Scarlet Enclave.','26365');

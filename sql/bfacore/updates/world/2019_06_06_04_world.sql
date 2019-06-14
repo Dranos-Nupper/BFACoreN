@@ -1,0 +1,6 @@
+REPLACE INTO `gameobject_template` ( `entry`,`type`,`displayId` ,`name` ,`IconName`,`castBarCaption` ,`unk1` ,`size` ,`Data0`,`Data1`,`Data2`,`Data3`,`Data4`,`Data5`,`Data6`,`Data7`,`Data8`,`Data9`,`Data10`,`Data11`,`Data12`,`Data13`,`Data14`,`Data15`,`Data16`,`Data17`,`Data18`,`Data19`,`Data20`,`Data21`,`Data22`,`Data23`,`Data24`,`Data25`,`Data26`,`Data27`,`Data28`,`Data29`,`Data30`,`Data31`,`Data32`,`Data33` ,`RequiredLevel`,`AIName` ,`ScriptName`,`VerifiedBuild`) VALUES
+("293551", "22", "51525", "Portal to Zuldazar", "", "", "", "1", "271204", "-1", "0", "1", "0", "0", "1", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "", "", "28153");
+
+
+REPLACE INTO `gameobject` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnDifficulties`, `phaseUseFlags`, `PhaseId`, `PhaseGroup`, `terrainSwapMap`, `position_x`, `position_y`, `position_z`, `orientation`, `rotation0`, `rotation1`, `rotation2`, `rotation3`, `spawntimesecs`, `animprogress`, `state`, `isActive`, `ScriptName`, `VerifiedBuild`) VALUES
+("210407675", "293551", "1", "1637", "5166", "0", "0", "0", "0", "-1", "1786.87", "-4336.85", "-8.12457", "2.48768", "-0", "-0", "-0.947024", "-0.321162", "300", "255", "1", "0", "", "0");
