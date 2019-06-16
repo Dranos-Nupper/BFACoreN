@@ -20,17 +20,25 @@
 #include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
+#include "QuestPackets.h"
+#include "ScenePackets.h"
 #include "SceneMgr.h"
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
+#include "SpellAuras.h"
 #include "SpellScript.h"
+#include "ScriptedCreature.h"
+#include "ScriptedGossip.h"
 #include "TemporarySummon.h"
+#include "WorldSession.h"
+#include "PhasingHandler.h"
 
 enum eQuests
 {
     QUEST_INVASION_BEGIN        = 40077,
     QUEST_ASHTONGUE_FORCES      = 40378,
     QUEST_COILSKAR_FORCES       = 40379,
+    QUEST_EYE_ON_THE_PRIZE      = 39049,
     QUEST_MEETING_WITH_QUEEN    = 39050,
     QUEST_SHIVARRA_FORCES       = 38765,
     QUEST_BEFORE_OVERRUN        = 38766,
@@ -102,7 +110,7 @@ public:
         if (checkTimer <= diff)
         {
             if (player->getClass() == CLASS_DEMON_HUNTER && player->GetZoneId() == 7705 && player->GetQuestStatus(QUEST_INVASION_BEGIN) == QUEST_STATUS_NONE &&
-                player->GetPositionY() < 3280.f && !player->HasAura(SPELL_SCENE_MARDUM_WELCOME) &&
+                player->GetPositionY() < 3280 && !player->HasAura(SPELL_SCENE_MARDUM_WELCOME) &&
                 !player->HasAura(SPELL_PHASE_MARDUM_WELCOME))
             {
                 player->CastSpell(player, SPELL_SCENE_MARDUM_WELCOME, true);
@@ -194,26 +202,26 @@ public:
 };
 
 // 200176 - Learn felsaber
-    class spell_learn_felsaber : public SpellScript
+class spell_learn_felsaber : public SpellScript
+{
+    PrepareSpellScript(spell_learn_felsaber);
+
+    void HandleMountOnHit(SpellEffIndex /*effIndex*/)
     {
-        PrepareSpellScript(spell_learn_felsaber);
+        GetCaster()->RemoveAurasDueToSpell(SPELL_PHASE_MARDUM_FELSABBER);
 
-        void HandleMountOnHit(SpellEffIndex /*effIndex*/)
+        // We schedule this to let hover animation pass
+        GetCaster()->GetScheduler().Schedule(Milliseconds(900), [](TaskContext context)
         {
-            GetCaster()->RemoveAurasDueToSpell(SPELL_PHASE_MARDUM_FELSABBER);
+            GetContextUnit()->CastSpell(GetContextUnit(), 200175, true); // Felsaber mount
+        });
+    }
 
-            // We schedule this to let hover animation pass
-            GetCaster()->GetScheduler().Schedule(Milliseconds(900), [](TaskContext context)
-            {
-                GetContextUnit()->CastSpell(GetContextUnit(), 200175, true); // Felsaber mount
-            });
-        }
-
-        void Register() override
-        {
-            OnEffectHitTarget += SpellEffectFn(spell_learn_felsaber::HandleMountOnHit, EFFECT_1, SPELL_EFFECT_APPLY_AURA);
-        }
-    };
+    void Register() override
+    {
+        OnEffectHitTarget += SpellEffectFn(spell_learn_felsaber::HandleMountOnHit, EFFECT_1, SPELL_EFFECT_APPLY_AURA);
+    }
+};
 
 // 94410 - Allari the Souleater
 struct npc_mardum_allari : public ScriptedAI
@@ -264,15 +272,16 @@ public:
     uint32 _killCredit;
 };
 
-struct npc_mardum_inquisitor_pernissius : public ScriptedAI
+// 93105 - Inquisitor Baleful
+struct npc_inquisitor_baleful : public ScriptedAI
 {
-    npc_mardum_inquisitor_pernissius(Creature* creature) : ScriptedAI(creature) { }
+    npc_inquisitor_baleful(Creature* creature) : ScriptedAI(creature) { }
 
     enum Spells
     {
         SPELL_INCITE_MADNESS    = 194529,
         SPELL_INFERNAL_SMASH    = 192709,
-
+        SPELL_LEGION_AEGIS      = 192665,
         SPELL_LEARN_EYE_BEAM    = 195447
     };
 
@@ -283,48 +292,106 @@ struct npc_mardum_inquisitor_pernissius : public ScriptedAI
 
     enum Text
     {
-        SAY_ONDEATH = 0,
-        SAY_ONCOMBAT = 1,
-        SAY_60PCT = 2,
+        SAY_ONCOMBAT = 0,
+        SAY_ONDEATH = 1,
+        SAY_60PCT = 2
     };
 
-    ObjectGuid colossalInfernalguid;
+    Position const NPCsPos[2] =
+    {
+        { 523.404f, 2428.41f, -117.087f, 0.108873f }, /// Summmon position for Colossal Infernal
+        { 586.843323f, 2433.053955f, -62.977276f, 6.143252f } /// Fly position when Legion Aegis Event (Inquisitor Baleful)
+    };
+
+    ObjectGuid colossalInfernalGuid;
+    bool aegisDone;
+    bool doingAegis;
+    uint8 elementalCast;
 
     void Reset() override
     {
-        if (Creature* infernal = me->SummonCreature(NPC_COLOSSAL_INFERNAL, 523.404f, 2428.41f, -117.087f, 0.108873f, TEMPSUMMON_CORPSE_TIMED_DESPAWN, 2000))
-            colossalInfernalguid = infernal->GetGUID();
+        me->SetCanFly(false);
+        me->SetDisableGravity(false);
+
+        if (!me->FindNearestCreature(NPC_COLOSSAL_INFERNAL, 150.0f))
+        {
+            if (Creature* infernal = me->SummonCreature(NPC_COLOSSAL_INFERNAL, NPCsPos[0], TEMPSUMMON_CORPSE_TIMED_DESPAWN, 2000))
+                colossalInfernalGuid = infernal->GetGUID();
+        }
+
+        aegisDone = false;
+        doingAegis = false;
+        elementalCast = 1;
     }
 
     Creature* GetInfernal() const
     {
-        return ObjectAccessor::GetCreature(*me, colossalInfernalguid);
+        return ObjectAccessor::GetCreature(*me, colossalInfernalGuid);
     }
 
     void EnterCombat(Unit*) override
     {
         Talk(SAY_ONCOMBAT);
 
-        me->GetScheduler().Schedule(Seconds(15), [this](TaskContext context)
+        me->GetScheduler().Schedule(Seconds(urand(8, 10)), [this](TaskContext context) /// Incite Madness
         {
-            if (Unit* target = me->GetVictim())
-                me->CastSpell(target, SPELL_INCITE_MADNESS);
-
-            context.Repeat(Seconds(15));
-        })
-        .Schedule(Seconds(10), [this](TaskContext context)
-        {
-            if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM))
-                if (Creature* infernal = GetInfernal())
-                    infernal->CastSpell(target, SPELL_INFERNAL_SMASH);
-
-            if (me->GetHealthPct() <= 60)
+            if (!doingAegis)
             {
-                Talk(SAY_60PCT);
+                if (Unit* target = me->GetVictim())
+                    me->CastSpell(target, SPELL_INCITE_MADNESS);
             }
 
-            context.Repeat(Seconds(10));
+            context.Repeat(15s);
         });
+    }
+
+    void DamageTaken(Unit* /*attacker*/, uint32& damage) override {
+        if (me->HealthBelowPctDamaged(60, damage) && !aegisDone)
+        {
+            aegisDone = true;
+            doingAegis = true;
+
+            Talk(SAY_60PCT);
+
+            if (Unit* target = me->GetVictim())
+                me->CastSpell(me, SPELL_LEGION_AEGIS, true);
+
+            me->AttackStop();
+            me->SetReactState(REACT_PASSIVE);
+
+            me->SetCanFly(true);
+            me->SetDisableGravity(true);
+            
+            me->GetMotionMaster()->MoveTakeoff(0, NPCsPos[1]);
+
+            me->GetScheduler().Schedule(1s, [this](TaskContext context)
+            {
+                if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM))
+                {
+                    if (Creature* infernal = GetInfernal())
+                        infernal->CastSpell(target, SPELL_INFERNAL_SMASH);
+                }
+
+                elementalCast++;
+
+                if (elementalCast <= 3) /// Only 3 cast of Infernal Smash
+                    context.Repeat(5s);
+            });
+            
+            me->GetScheduler().Schedule(15s, [this](TaskContext context) /// End Legion Aegis event
+            {
+                me->SetReactState(REACT_AGGRESSIVE);
+                me->SetDisableGravity(true);
+
+                if (Creature* infernal = GetInfernal())
+                {
+                    infernal->AttackStop();
+                    infernal->SetReactState(REACT_PASSIVE);
+                }
+
+                doingAegis = false;
+            });
+        }
     }
 
     void JustDied(Unit* /*killer*/) override
@@ -339,23 +406,26 @@ struct npc_mardum_inquisitor_pernissius : public ScriptedAI
 
         for (Player* player : players)
         {
-            player->KilledMonsterCredit(105946);
-            player->KilledMonsterCredit(96159);
+            if (player->HasQuest(QUEST_EYE_ON_THE_PRIZE) && !player->GetQuestObjectiveData(QUEST_EYE_ON_THE_PRIZE, 0))
+            {
+                player->KilledMonsterCredit(105946);
+                player->KilledMonsterCredit(96159);
 
-            if (!player->HasSpell(SPELL_LEARN_EYE_BEAM))
-                player->CastSpell(player, SPELL_LEARN_EYE_BEAM);
+                if (!player->HasSpell(SPELL_LEARN_EYE_BEAM))
+                    player->CastSpell(player, SPELL_LEARN_EYE_BEAM);
+            }
         }
     }
 };
 
-// 192709 Infernal Smash
+// 192709 - Infernal Smash
 class spell_mardum_infernal_smash : public SpellScript
 {
     PrepareSpellScript(spell_mardum_infernal_smash);
 
     void HandleDummy(SpellEffIndex /*effIndex*/)
     {
-        if (!GetCaster() || !GetHitUnit())
+        if (!GetCaster() || !GetHitUnit() || !(GetHitUnit()->GetTypeId() == TypeID::TYPEID_PLAYER)) 
             return;
 
         GetCaster()->CastSpell(GetHitUnit(), GetEffectValue(), true);
@@ -451,37 +521,31 @@ struct npc_mardum_doom_commander_beliash : public ScriptedAI
         SAY_ONDEATH = 1,
     };
 
-    void Reset() override
-    {
-        me->GetScheduler().CancelAll();
-    }
-
     void EnterCombat(Unit*) override
     {
         Talk(SAY_ONCOMBAT_BELIASH);
 
-        me->GetScheduler().Schedule(2500ms, [](TaskContext context)
+        me->GetScheduler().Schedule(Milliseconds(2500), [this](TaskContext context)
         {
-            GetContextUnit()->CastSpell(nullptr, SPELL_SHADOW_BOLT_VOLLEY, false);
-            context.Repeat(20s);
+            me->CastSpell(me, SPELL_SHADOW_BOLT_VOLLEY, true);
+            context.Repeat(Milliseconds(2500));
         });
 
-        /*me->GetScheduler().Schedule(Seconds(10), [this](TaskContext context)
+        me->GetScheduler().Schedule(Seconds(10), [this](TaskContext context)
         {
             me->CastSpell(me, SPELL_SHADOW_RETREAT);
             context.Repeat(Seconds(15));
 
             // During retreat commander make blaze appear
-            me->GetScheduler().Schedule({ Milliseconds(500), Milliseconds(1000) }, [this](TaskContext context)
+            me->GetScheduler().Schedule({ Milliseconds(500), Milliseconds(1000) }, [this](TaskContext /*context*/)
             {
                 me->CastSpell(me, SPELL_SHADOW_RETREAT_AT, true);
             });
-        });*/
+        });
     }
 
     void JustDied(Unit* /*killer*/) override
     {
-        me->GetScheduler().CancelAll();
         Talk(SAY_ONDEATH);
 
         std::list<Player*> players;
@@ -636,6 +700,9 @@ class spell_mardum_spectral_sight : public SpellScript
     {
         if (GetCaster()->IsPlayer() && GetCaster()->GetAreaId() == 7754)
             GetCaster()->ToPlayer()->KilledMonsterCredit(96437);
+        if (GetCaster()->IsPlayer() && GetCaster()->GetAreaId() == 4982)
+            GetCaster()->ToPlayer()->KilledMonsterCredit(102563);
+        // TO STROWIND PART AND PLAY SCENE
     }
 
     void Register() override
@@ -736,7 +803,8 @@ class PlayerScript_mardum_spec_choice : public PlayerScript
 public:
     PlayerScript_mardum_spec_choice() : PlayerScript("PlayerScript_mardum_spec_choice") {}
 
-    void OnPlayerChoiceResponse(Player* player, uint32 choiceID, uint32 responseID) override
+// OnPlayerChoiceResponse
+    void OnCompleteQuestChoice(Player* player, uint32 choiceID, uint32 responseID)
     {
         if (choiceID != PLAYER_CHOICE_DH_SPEC_SELECTION)
             return;
@@ -761,23 +829,220 @@ public:
     }
 };
 
-// 96655, 93127, 99045, 96420, 96652
-class npc_mardum_dh_learn_spec : public CreatureScript
+enum KaynSunfury
+{
+    QUEST_CRY_HAVOC = 39516,
+    SAY_1 = 0,
+    SAY_2 = 1,
+    SAY_3 = 2,
+};
+
+// 93127 Kayn Sunfury
+class npc_kayn_sunfury : public CreatureScript
 {
 public:
-    npc_mardum_dh_learn_spec() : CreatureScript("npc_mardum_dh_learn_spec") { }
+    npc_kayn_sunfury() : CreatureScript("npc_kayn_sunfury") { }
 
-    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 /*action*/) override
+    bool OnQuestAccept(Player* player, Creature* creature, Quest const* quest)
     {
-        player->KilledMonsterCredit(creature->GetEntry());
+        if (quest->GetQuestId() == QUEST_CRY_HAVOC)
+            creature->AI()->Talk(0);
 
-        if (creature->GetEntry() == 96652)
+        if (quest->GetQuestId() == QUEST_ON_FELBAT_WINGS)
+            creature->AI()->Talk(1);
+
+        if (quest->GetQuestId() == 40077)
+            creature->AI()->Talk(2);
+
+        return true;
+    }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        if (player->GetQuestStatus(QUEST_CRY_HAVOC) == QUEST_STATUS_INCOMPLETE)
         {
-            // TODO Animation power overwhel & kill creature
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Kayn, I'll show you what I've learned about demonic mysteries.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
+            SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+
+            return true;
         }
         else
+            SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+
+        switch (action)
         {
-            // TODO Animation
+        case GOSSIP_ACTION_INFO_DEF:
+            player->CastSpell(creature, 195020, true);
+            creature->AI()->Talk(0);
+            CloseGossipMenuFor(player);
+            break;
+        }
+
+        return true;
+    }
+};
+
+// 96655
+class npc_allari : public CreatureScript
+{
+public:
+    npc_allari() : CreatureScript("npc_allari") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        if (player->GetQuestStatus(QUEST_CRY_HAVOC) == QUEST_STATUS_INCOMPLETE)
+        {
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Allari, estos son los secretos que he descubierto.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
+            SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+        }
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+
+        switch (action)
+        {
+        case GOSSIP_ACTION_INFO_DEF:
+            player->CastSpell(creature, 194996, true);
+            creature->AI()->Talk(0);
+            CloseGossipMenuFor(player);
+            break;
+        }
+
+        return true;
+    }
+};
+
+// 96420
+class npc_cyana : public CreatureScript
+{
+public:
+    npc_cyana() : CreatureScript("npc_cyana") { }
+
+    bool OnQuestAccept(Player* player, Creature* creature, Quest const* quest)
+    {
+        if (quest->GetQuestId() == 38819)
+            player->CompleteQuest(38819);
+
+        return true;
+    }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        if (player->GetQuestStatus(QUEST_CRY_HAVOC) == QUEST_STATUS_INCOMPLETE)
+        {
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Escucha atentamente, Cyana. Esto es lo que he aprendido del Escrito de secretos viles.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
+            SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+        }
+
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+
+        switch (action)
+        {
+        case GOSSIP_ACTION_INFO_DEF:
+            player->CastSpell(creature, 195019, true);
+            creature->AI()->Talk(0);
+            CloseGossipMenuFor(player);
+            break;
+        }
+
+        return true;
+    }
+};
+
+// 99045
+class npc_korvas : public CreatureScript
+{
+public:
+    npc_korvas() : CreatureScript("npc_korvas") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        if (player->GetQuestStatus(QUEST_CRY_HAVOC) == QUEST_STATUS_INCOMPLETE)
+        {
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Ready to know The Secrets Of The Legion, Korvas?", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
+            SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+        }
+
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+
+        switch (action)
+        {
+        case GOSSIP_ACTION_INFO_DEF:
+            player->CastSpell(creature, 195021, true);
+            creature->AI()->Talk(0);
+            CloseGossipMenuFor(player);
+            break;
+        }
+
+        return true;
+    }
+};
+
+// 96652
+class npc_mannethrel : public CreatureScript
+{
+public:
+    npc_mannethrel() : CreatureScript("npc_mannethrel") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        if (creature->IsQuestGiver())
+            player->PrepareQuestMenu(creature->GetGUID());
+
+        if (player->GetQuestStatus(QUEST_CRY_HAVOC) == QUEST_STATUS_INCOMPLETE)
+        {
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Get Ready, Mannethrel. I'm going to fill you with the power of the Legion's secrets.", GOSSIP_SENDER_MAIN, GOSSIP_ACTION_INFO_DEF);
+            SendGossipMenuFor(player, player->GetGossipTextId(creature), creature->GetGUID());
+        }
+
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*sender*/, uint32 action) override
+    {
+        player->PlayerTalkClass->ClearMenus();
+
+        switch (action)
+        {
+        case GOSSIP_ACTION_INFO_DEF:
+            player->CastSpell(creature, 195022, true);
+            creature->AI()->Talk(0);
+            creature->AI()->Talk(1);
+            creature->KillSelf();
+            CloseGossipMenuFor(player);
+            break;
         }
 
         return true;
@@ -799,18 +1064,485 @@ public:
     }
 };
 
-// 93802
-struct npc_mardum_tyranna : public ScriptedAI
+enum TyrannaFightData
 {
-    npc_mardum_tyranna(Creature* creature) : ScriptedAI(creature) { }
+    DATA_TYRANNA_DEATH = 1,
+};
 
-    void JustDied(Unit* /*killer*/) override
+enum TyrannaFightTexts
+{
+    TEXT_DEATH = 0,
+};
+
+enum TyrannaFightMisc
+{
+    BROOD_QUEEN_TYRANNA = 93802,
+};
+
+// Kayn: 20542609 (Entry: 97244)
+class npc_kayn_tyranna_fight : public CreatureScript
+{
+public:
+    npc_kayn_tyranna_fight() : CreatureScript("npc_kayn_tyranna_fight") { }
+
+    struct npc_kayn_tyranna_fightAI : public ScriptedAI
     {
-        std::list<Player*> players;
-        me->GetPlayerListInGrid(players, 50.0f);
+        npc_kayn_tyranna_fightAI(Creature* creature) : ScriptedAI(creature) {
+            me->SetReactState(REACT_DEFENSIVE);
+        }
 
-        for (Player* player : players)
-            player->KilledMonsterCredit(101760);
+        void MoveInLineOfSight(Unit* who) override
+        {
+            if (who->IsPlayer())
+                if (Creature* creature = me->FindNearestCreature(BROOD_QUEEN_TYRANNA, me->GetVisibilityRange(), true))
+                    AttackStart(creature);
+        }
+
+        void EnterCombat(Unit* who) override
+        {
+            who->GetAI()->AttackStart(me);
+        }
+
+        void DamageTaken(Unit* /*attacker*/, uint32& damage) override
+        {
+            if (HealthAbovePct(75))
+                damage = urand(1, 2);
+            else
+                me->SetHealth(me->GetMaxHealth() * 0.85f);
+        }
+
+        void SpellHit(Unit* /*caster*/, SpellInfo const* spell) override {}
+
+        void SetData(uint32 id, uint32 /*value*/) override
+        {
+            switch (id)
+            {
+            case DATA_TYRANNA_DEATH:
+                Talk(TEXT_DEATH);
+                EnterEvadeMode(EVADE_REASON_OTHER);
+                break;
+            }
+        }
+
+        void JustReachedHome() override {}
+
+        void UpdateAI(uint32 diff) override
+        {
+            _events.Update(diff);
+
+            // while loop goes here
+
+            DoMeleeAttackIfReady();
+        }
+
+    private:
+        EventMap _events;
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_kayn_tyranna_fightAI(creature);
+    }
+};
+
+// Allari: 20542497 (Entry: 97962)
+class npc_allari_tyranna_fight : public CreatureScript
+{
+public:
+    npc_allari_tyranna_fight() : CreatureScript("npc_allari_tyranna_fight") { }
+
+    struct npc_allari_tyranna_fightAI : public ScriptedAI
+    {
+        npc_allari_tyranna_fightAI(Creature* creature) : ScriptedAI(creature) {
+            me->SetReactState(REACT_DEFENSIVE);
+        }
+
+        void MoveInLineOfSight(Unit* who) override
+        {
+            if (who->IsPlayer())
+                if (Creature* creature = me->FindNearestCreature(BROOD_QUEEN_TYRANNA, me->GetVisibilityRange(), true))
+                    AttackStart(creature);
+        }
+
+        void EnterCombat(Unit* who) override
+        {
+            who->GetAI()->AttackStart(me);
+        }
+
+        void DamageTaken(Unit* /*attacker*/, uint32& damage) override
+        {
+            if (HealthAbovePct(75))
+                damage = urand(1, 2);
+            else
+                me->SetHealth(me->GetMaxHealth() * 0.85f);
+        }
+
+        void SpellHit(Unit* /*caster*/, SpellInfo const* spell) override {}
+
+        void SetData(uint32 id, uint32 /*value*/) override
+        {
+            switch (id)
+            {
+            case DATA_TYRANNA_DEATH:
+                EnterEvadeMode(EVADE_REASON_OTHER);
+                break;
+            }
+        }
+
+        void JustReachedHome() override {}
+
+        void UpdateAI(uint32 diff) override
+        {
+            _events.Update(diff);
+
+            // while loop goes here
+
+            DoMeleeAttackIfReady();
+        }
+
+    private:
+        EventMap _events;
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_allari_tyranna_fightAI(creature);
+    }
+};
+
+// Jace: 20542610 (Entry: 97959)
+class npc_jace_tyranna_fight : public CreatureScript
+{
+public:
+    npc_jace_tyranna_fight() : CreatureScript("npc_jace_tyranna_fight") { }
+
+    struct npc_jace_tyranna_fightAI : public ScriptedAI
+    {
+        npc_jace_tyranna_fightAI(Creature* creature) : ScriptedAI(creature) {
+            me->SetReactState(REACT_DEFENSIVE);
+        }
+
+        void MoveInLineOfSight(Unit* who) override
+        {
+            if (who->IsPlayer())
+                if (Creature* creature = me->FindNearestCreature(BROOD_QUEEN_TYRANNA, me->GetVisibilityRange(), true))
+                    AttackStart(creature);
+        }
+
+        void EnterCombat(Unit* who) override
+        {
+            who->GetAI()->AttackStart(me);
+        }
+
+        void DamageTaken(Unit* /*attacker*/, uint32& damage) override
+        {
+            if (HealthAbovePct(75))
+                damage = urand(1, 2);
+            else
+                me->SetHealth(me->GetMaxHealth() * 0.85f);
+        }
+
+        void SpellHit(Unit* /*caster*/, SpellInfo const* spell) override {}
+
+        void SetData(uint32 id, uint32 /*value*/) override
+        {
+            switch (id)
+            {
+            case DATA_TYRANNA_DEATH:
+                EnterEvadeMode(EVADE_REASON_OTHER);
+                break;
+            }
+        }
+
+        void JustReachedHome() override {}
+
+        void UpdateAI(uint32 diff) override
+        {
+            _events.Update(diff);
+
+            DoMeleeAttackIfReady();
+        }
+
+    private:
+        EventMap _events;
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_jace_tyranna_fightAI(creature);
+    }
+};
+
+// Korvas: 20542498 (Entry: 98712)
+class npc_korvas_tyranna_fight : public CreatureScript
+{
+public:
+    npc_korvas_tyranna_fight() : CreatureScript("npc_korvas_tyranna_fight") { }
+
+    struct npc_korvas_tyranna_fightAI : public ScriptedAI
+    {
+        npc_korvas_tyranna_fightAI(Creature* creature) : ScriptedAI(creature) {
+            me->SetReactState(REACT_DEFENSIVE);
+        }
+
+        void MoveInLineOfSight(Unit* who) override
+        {
+            if (who->IsPlayer())
+                if (Creature* creature = me->FindNearestCreature(BROOD_QUEEN_TYRANNA, me->GetVisibilityRange(), true))
+                    AttackStart(creature);
+        }
+
+        void EnterCombat(Unit* who) override
+        {
+            who->GetAI()->AttackStart(me);
+        }
+
+        void DamageTaken(Unit* /*attacker*/, uint32& damage) override
+        {
+            if (HealthAbovePct(75))
+                damage = urand(1, 2);
+            else
+                me->SetHealth(me->GetMaxHealth() * 0.85f);
+        }
+
+        void SpellHit(Unit* /*caster*/, SpellInfo const* spell) override {}
+
+        void SetData(uint32 id, uint32 /*value*/) override
+        {
+            switch (id)
+            {
+            case DATA_TYRANNA_DEATH:
+                EnterEvadeMode(EVADE_REASON_OTHER);
+                break;
+            }
+        }
+
+        void JustReachedHome() override {}
+
+        void UpdateAI(uint32 diff) override
+        {
+            _events.Update(diff);
+
+            DoMeleeAttackIfReady();
+        }
+
+    private:
+        EventMap _events;
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_korvas_tyranna_fightAI(creature);
+    }
+};
+
+enum TyrannaTexts
+{
+    TEXT_START_COMBAT = 0,
+    TEXT_KEYSTONE = 1,
+    TEXT_KISS = 2,
+    TEXT_CHILDREN = 3,
+    TEXT_TYRANNA_DEATH = 4,
+};
+
+enum TyrannaEvents
+{
+    EVENT_BROOD_SWARM = 1,
+    EVENT_INTO_THE_SHADOWS = 2,
+    EVENT_QUEENS_BITE = 3,
+    EVENT_SAY_TEXT_2 = 4,
+    EVENT_SAY_TEXT_1 = 5,
+    EVENT_TYRANNA_DIED = 6,
+};
+
+enum TyrannaSpells
+{
+    SPELL_BROOD_SWARM = 197627,
+    SPELL_INTO_THE_SHADOWS = 197414,
+    SPELL_QUEENS_BITE = 197486,
+};
+
+enum TyrannaMisc
+{
+    NPC_KORVAS_TYRANNA = 98712,
+    NPC_JACE_TYRANNA = 97959,
+    NPC_KAYN_TYRANNA = 97244,
+    NPC_ALLARI_TYRANNA = 97962,
+    NPC_TYRANNA_SPAWN = 100334,
+    NPC_SKITTERING_BROODLING = 100333,
+};
+
+class npc_brood_queen_tyranna : public CreatureScript
+{
+public:
+    npc_brood_queen_tyranna() : CreatureScript("npc_brood_queen_tyranna") { }
+
+    struct npc_brood_queen_tyrannaAI : public ScriptedAI
+    {
+        npc_brood_queen_tyrannaAI(Creature* creature) : ScriptedAI(creature) {
+            Initialize();
+    }
+
+        void Initialize()
+        {
+            _playerParticipating = false;
+            _combatStarted = false;
+            _swarmSummoned = 0;
+        }
+
+        void Reset() override
+        {
+            _events.Reset();
+            Initialize();
+            me->setActive(true);
+            me->SetReactState(REACT_PASSIVE);
+        }
+
+        void MoveInLineOfSight(Unit* who) override
+        {
+            if (Player* player = who->ToPlayer())
+                if (player->GetDistance(me) < 10.0f)
+                    if (!_combatStarted)
+                    {
+                        _combatStarted = true;
+                        // Enter Combat
+                        _events.ScheduleEvent(EVENT_SAY_TEXT_1, 0);
+                        _events.ScheduleEvent(EVENT_BROOD_SWARM, 19000);
+                        _events.ScheduleEvent(EVENT_INTO_THE_SHADOWS, 22000);
+                        _events.ScheduleEvent(EVENT_QUEENS_BITE, urand(16000, 18000));
+                    }  
+        }
+
+        void EnterCombat(Unit* /*who*/) override
+        {
+            // We will schedule the npc abilities when player move near the npc 
+        }
+
+        void DamageTaken(Unit* attacker, uint32& damage) override
+        {
+            if (HealthAbovePct(65) && attacker->IsCreature())
+                if (attacker->GetEntry() == NPC_KAYN_TYRANNA)
+                    damage = urand(1, 2);
+
+            if (HealthBelowPct(65) && attacker->IsCreature())
+                if (attacker->GetEntry() == NPC_KAYN_TYRANNA)
+                    me->SetHealth(me->GetHealth() + damage);
+
+            if (!_playerParticipating && attacker->ToPlayer())
+            {
+                if (Creature* creature = me->FindNearestCreature(NPC_KAYN_TYRANNA, me->GetVisibilityRange(), true))
+                {
+                    _playerParticipating = true;
+                }
+            }
+
+            if (damage >= me->GetHealth())
+            {
+                _events.ScheduleEvent(EVENT_TYRANNA_DIED, 0);
+
+                std::list<HostileReference*> threatList;
+                threatList = me->getThreatManager().getThreatList();
+                for (std::list<HostileReference*>::const_iterator itr = threatList.begin(); itr != threatList.end(); ++itr)
+                    if (Player* target = (*itr)->getTarget()->ToPlayer())
+                        if (target->GetQuestStatus(38728) == QUEST_STATUS_INCOMPLETE)
+                            target->KilledMonsterCredit(101760);
+            }
+        }
+
+        void JustDied(Unit* /*killer*/) override
+        {
+            std::list<Creature*> summonedSwarm;
+            me->GetCreatureListWithEntryInGrid(summonedSwarm, NPC_TYRANNA_SPAWN, me->GetVisibilityRange());
+            for (std::list<Creature*>::const_iterator itr = summonedSwarm.begin(); itr != summonedSwarm.end(); ++itr)
+                (*itr)->ToCreature()->DespawnOrUnsummon(0);
+
+            if (Creature* creature = me->FindNearestCreature(NPC_KAYN_TYRANNA, me->GetVisibilityRange(), true))
+                creature->AI()->SetData(DATA_TYRANNA_DEATH, DATA_TYRANNA_DEATH);
+            if (Creature* creature = me->FindNearestCreature(NPC_KORVAS_TYRANNA, me->GetVisibilityRange(), true))
+                creature->AI()->SetData(DATA_TYRANNA_DEATH, DATA_TYRANNA_DEATH);
+            if (Creature* creature = me->FindNearestCreature(NPC_JACE_TYRANNA, me->GetVisibilityRange(), true))
+                creature->AI()->SetData(DATA_TYRANNA_DEATH, DATA_TYRANNA_DEATH);
+            if (Creature* creature = me->FindNearestCreature(NPC_ALLARI_TYRANNA, me->GetVisibilityRange(), true))
+                creature->AI()->SetData(DATA_TYRANNA_DEATH, DATA_TYRANNA_DEATH);
+
+            me->DespawnOrUnsummon(300000, Seconds(30));
+        }
+
+        void SummomNearTarget(uint8 count, uint32 entry, Position targetPos, uint32 duration)
+        {
+            for (uint8 i = 0; i < count; i++)
+            {
+                uint8 rand = urand(1, 2);
+                float angle = frand(0.0f, 2.0f * float(M_PI));
+                float x = targetPos.GetPositionX() + (5.0f * std::cos(angle));
+                float y = targetPos.GetPositionY() + (5.0f * std::sin(angle));
+                Position randomPosition = {
+                    x, y, targetPos.GetPositionZ(), targetPos.GetOrientation()
+                };
+                me->SummonCreature(entry, randomPosition, TEMPSUMMON_CORPSE_DESPAWN, duration);
+            }
+        }
+
+        void UpdateAI(uint32 diff) override
+        {
+            _events.Update(diff);
+
+            if (!UpdateVictim())
+                return;
+
+            while (uint32 eventId = _events.ExecuteEvent())
+            {
+                switch (eventId)
+                {
+                case EVENT_BROOD_SWARM:
+                    if (Unit* target = SelectTarget(SELECT_TARGET_RANDOM, 0, 0, true))
+                    {
+                        Talk(TEXT_CHILDREN, me->GetOwner());
+                        // commented out cast of the brood swarm spell because I've failed with the implementation
+                        // leave here a workaround with the regular summon
+                        // DoCast(target, SPELL_BROOD_SWARM);
+                        SummomNearTarget(2, NPC_TYRANNA_SPAWN, target->GetPosition(), 15000); // 2 bigger spiders
+                        SummomNearTarget(3, NPC_SKITTERING_BROODLING, target->GetPosition(), 10000); // 3 small spiders
+                    }
+                    _events.ScheduleEvent(EVENT_BROOD_SWARM, 22000);
+                    _swarmSummoned++;
+                    break;
+                case EVENT_QUEENS_BITE:
+                    Talk(TEXT_KISS, me->GetOwner());
+                    DoCast(SelectTarget(SELECT_TARGET_RANDOM, 1), SPELL_QUEENS_BITE, true);
+                    _events.ScheduleEvent(EVENT_QUEENS_BITE, urand(18000, 24000));
+                    break;
+                case EVENT_INTO_THE_SHADOWS:
+                    DoCast(me, SPELL_INTO_THE_SHADOWS, true);
+                    _events.RescheduleEvent(EVENT_QUEENS_BITE, 20000 + urand(14000, 20000));
+                    _events.RescheduleEvent(EVENT_BROOD_SWARM, 20000 + urand(20000, 26000));
+                    _events.ScheduleEvent(EVENT_INTO_THE_SHADOWS, 20000 + 20000);
+                    break;
+                case EVENT_SAY_TEXT_2:
+                    Talk(TEXT_KEYSTONE, me->GetOwner());
+                    break;
+                case EVENT_SAY_TEXT_1:
+                    Talk(TEXT_START_COMBAT, me->GetOwner());
+                    _events.ScheduleEvent(EVENT_SAY_TEXT_2, 3000);
+                    break;
+                case EVENT_TYRANNA_DIED:
+                    Talk(TEXT_TYRANNA_DEATH, me->GetOwner());
+                    break;
+                }
+            }
+            DoMeleeAttackIfReady();
+        }
+
+    private:
+        EventMap _events;
+        bool _playerParticipating;
+        bool _combatStarted;
+        uint8 _swarmSummoned;
+    };
+
+    CreatureAI* GetAI(Creature* creature) const override
+    {
+        return new npc_brood_queen_tyrannaAI(creature);
     }
 };
 
@@ -820,11 +1552,13 @@ class npc_mardum_kayn_sunfury_end : public CreatureScript
 public:
     npc_mardum_kayn_sunfury_end() : CreatureScript("npc_mardum_kayn_sunfury_end") { }
 
-    bool OnQuestReward(Player* /*player*/, Creature* /*creature*/, Quest const* /*quest*/, uint32 /*opt*/) override
+    bool OnQuestReward(Player* player, Creature* /*creature*/, Quest const* /*quest*/, uint32 /*opt*/) override
     {
         // This Scene make the mobs disappear ATM
         //if (quest->GetQuestId() == QUEST_THE_KEYSTONE)
         //    player->CastSpell(player, 193387, true); // Scene
+
+        PhasingHandler::OnConditionChange(player);
 
         return true;
     }
@@ -854,34 +1588,16 @@ class spell_mardum_back_to_black_temple : public SpellScript
         {
             player->AddMovieDelayedAction(471, [player]
             {
-                //player->CastSpell(nullptr, 192141, true);
-
-                if (player->GetTeam() == ALLIANCE)
-                    player->TeleportTo(0, -8838.72f, 616.29f, 93.06f, 0.779564f);
-                else
-                    player->TeleportTo(1, 1569.96f, -4397.41f, 16.05f, 0.527317f);
+                player->EquipNewItem(15, 132243, true);
+                player->EquipNewItem(16, 128956, true);
+                player->TeleportTo(1468, 4325.46f, -620.53f, -281.40f, 1.517563f);
+                player->SetHomebind(player->GetWorldLocation(), 7873);
             });
 
             player->GetScheduler().Schedule(Seconds(2), [](TaskContext context)
             {
                 GetContextUnit()->RemoveAurasDueToSpell(192140); // Remove black screen
             });
-
-            // TEMPFIX - Spells learned in next zone
-            if (player->GetSpecializationId() == TALENT_SPEC_DEMON_HUNTER_HAVOC)
-            {
-                player->LearnSpell(188499, false);
-                player->LearnSpell(198793, false);
-                player->LearnSpell(198589, false);
-                player->LearnSpell(179057, false);
-            }
-            else
-            {
-                player->LearnSpell(204596, false);
-                player->LearnSpell(203720, false);
-                player->LearnSpell(204021, false);
-                player->LearnSpell(185245, false);
-            }
         }
     }
 
@@ -905,7 +1621,7 @@ void AddSC_zone_mardum()
     new go_mardum_cage("go_mardum_cage_cyana",      94377);
     new go_mardum_cage("go_mardum_cage_izal",       93117);
     new go_mardum_cage("go_mardum_cage_mannethrel", 93230);
-    RegisterCreatureAI(npc_mardum_inquisitor_pernissius);
+    RegisterCreatureAI(npc_inquisitor_baleful);
     RegisterSpellScript(spell_mardum_infernal_smash);
     new npc_mardum_ashtongue_mystic();
     new go_mardum_portal_coilskar();
@@ -921,10 +1637,18 @@ void AddSC_zone_mardum()
     new go_mardum_illidari_banner();
     new go_mardum_tome_of_fel_secrets();
     new PlayerScript_mardum_spec_choice();
-    new npc_mardum_dh_learn_spec();
     new npc_mardum_izal_whitemoon();
-    RegisterCreatureAI(npc_mardum_tyranna);
+    new npc_kayn_tyranna_fight();
+    new npc_allari_tyranna_fight();
+    new npc_jace_tyranna_fight();
+    new npc_korvas_tyranna_fight();
+    new npc_brood_queen_tyranna();
     new npc_mardum_kayn_sunfury_end();
     new go_mardum_the_keystone();
+    new npc_kayn_sunfury();
+    new npc_allari();
+    new npc_cyana();
+    new npc_korvas();
+    new npc_mannethrel();
     RegisterSpellScript(spell_mardum_back_to_black_temple);
 }

@@ -39,6 +39,7 @@ INSERT INTO `creature_queststarter` (`id`, `quest`) VALUES
 DELETE FROM `creature_questender` WHERE `quest` IN (40253, 38723);
 INSERT INTO `creature_questender` (`id`,`quest`) VALUES (92984, 40253), (92984, 38723);
 
+UPDATE `creature_template` SET `ScriptName` = 'npc_inquisitor_baleful' WHERE `entry` = 96665;
 UPDATE `creature_template` SET `ScriptName` = 'npc_kayn_3' WHERE `entry` = 96665;
 UPDATE `creature_template` SET `ScriptName` = 'npc_altruis' WHERE `entry` = 92986;
 UPDATE `creature_template` SET `ScriptName` = 'npc_fel_infusion' WHERE `entry` = 92776;
