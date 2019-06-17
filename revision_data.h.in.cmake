@@ -9,10 +9,10 @@
  #define _SOURCE_DIRECTORY          R"(@CMAKE_SOURCE_DIR@)"
  #define _BUILD_DIRECTORY           R"(@BUILDDIR@)"
  #define _MYSQL_EXECUTABLE          R"(@MYSQL_EXECUTABLE@)"
- #define _FULL_DATABASE             "CTDB_world_801.02.sql"
- #define _HOTFIXES_DATABASE         "CTDB_hotfixes_801.02.sql"
- #define VER_COMPANYNAME_STR        "CoreTeaM Developers"
- #define VER_LEGALCOPYRIGHT_STR     "(c)2008-2018 CoreTeaM"
+ #define _FULL_DATABASE             "BFADB_world_801.03.sql"
+ #define _HOTFIXES_DATABASE         "BFADB_hotfixes_801.03.sql"
+ #define VER_COMPANYNAME_STR        "BFACoreN Developers"
+ #define VER_LEGALCOPYRIGHT_STR     "(c)2008-2019 BFACoreN"
  #define VER_FILEVERSION            0,0,0
  #define VER_FILEVERSION_STR        "@rev_hash@ @rev_date@ (@rev_branch@ branch)"
  #define VER_PRODUCTVERSION         VER_FILEVERSION
