@@ -10,7 +10,7 @@
 
 -- Data for 8.0.1 (28153) http://www.mediafire.com/file/v04d0yei8n19xa0/8.0.1_Data.rar/file
 
--- Launcher for Client 8.0.1 (28153) https://mega.nz/#!iU0kjQCI!LmpdMfQg0pcik1ouS3mpYEbCuL4EdGt1lKzoLtNYDdM  thanks to Arctum team
+-- Launcher for Client 8.0.1 (28153) https://mega.nz/#!eB1VyKxb!PpSEbhgJPvlBZwcqon2D2trtYvBzjs-xjar7u5mC1BU  thanks to Arctum team
 
 ## Requirements
 
