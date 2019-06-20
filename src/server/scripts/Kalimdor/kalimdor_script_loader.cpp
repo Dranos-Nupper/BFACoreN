@@ -48,6 +48,10 @@ void AddSC_culling_of_stratholme();
 void AddSC_instance_culling_of_stratholme();
 void AddSC_instance_dire_maul();                    //Dire Maul
 void AddSC_instance_ragefire_chasm();               //Ragefire Chasm
+void AddSC_boss_adarogg();
+void AddSC_boss_gordoth();
+void AddSC_boss_koranthal();
+void AddSC_boss_slagmaw();                          //Ragefire Chasm
 void AddSC_boss_celebras_the_cursed();              //Maraudon
 void AddSC_boss_landslide();
 void AddSC_boss_noxxion();
