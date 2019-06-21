@@ -160,6 +160,21 @@ enum BG_BFG_Objectives
     BG_OBJECTIVE_DEFEND_BASE = 123
 };
 
+/* do NOT change the order, else wrong behaviour */
+enum BG_BG_BattlegroundNodes
+{
+    BG_BG_NODE_LIGHTHOUSE = 0,
+    BG_BG_NODE_WATERWORKS = 1,
+    BG_BG_NODE_MINE = 2,
+
+    BG_BG_DYNAMIC_NODES_COUNT = 3,                        // dynamic nodes that can be captured(it's normally 4)
+
+    BG_BG_SPIRIT_ALIANCE = 3,
+    BG_BG_SPIRIT_HORDE = 4,
+
+    BG_BG_ALL_NODES_COUNT = 5,                        // all nodes (dynamic and static)
+};
+
 #define BG_BFG_NotBGBGWeekendHonorTicks      330
 #define BG_BFG_BGBGWeekendHonorTicks         200
 #define BG_BFG_NotBGBGWeekendReputationTicks 200
@@ -244,4 +259,66 @@ protected:
 
     uint32 BasesAssaulted;
     uint32 BasesDefended;
-    };
+};
+
+class BattlegroundBFG : public Battleground {
+    friend class BattlegroundMgr;
+
+public:
+    BattlegroundBFG();
+    ~BattlegroundBFG();
+
+    void PostUpdateImpl(uint32 diff) override;
+    void AddPlayer(Player* player) override;
+    void StartingEventCloseDoors() override;
+    void StartingEventOpenDoors() override;
+    void RemovePlayer(Player* player, ObjectGuid guid, uint32 team) override;
+    void HandleAreaTrigger(Player* source, uint32 trigger, bool entered) override;
+    bool SetupBattleground() override;
+    void Reset() override;
+    void EndBattleground(uint32 winner) override;
+    WorldSafeLocsEntry const* GetClosestGraveYard(Player* player) override;
+
+    /* Scorekeeping */
+    bool UpdatePlayerScore(Player* Source, uint32 type, uint32 value, bool doAddHonor = true);
+
+    void FillInitialWorldStates(WorldPackets::WorldState::InitWorldStates& packet) override;
+
+    /* achievement req. */
+    bool IsAllNodesControlledByTeam(uint32 team) const override;
+private:
+    /* Gameobject spawning/despawning */
+    void _CreateBanner(uint8 node, uint8 type, uint8 teamIndex, bool delay);
+    void _DelBanner(uint8 node, uint8 type, uint8 teamIndex);
+    void _SendNodeUpdate(uint8 node);
+
+    /* Creature spawning/despawning */
+    // TODO: working, scripted peons spawning
+    void _NodeOccupied(uint8 node, Team team);
+    void _NodeDeOccupied(uint8 node);
+
+    int32 _GetNodeNameId(uint8 node);
+
+    /* Nodes occupying */
+    void EventPlayerClickedOnFlag(Player* source, GameObject* target_obj) override;
+
+    /* Nodes info:
+    0: neutral
+    1: ally contested
+    2: horde contested
+    3: ally occupied
+    4: horde occupied     */
+    uint8 m_Nodes[BG_BFG_DYNAMIC_NODES_COUNT];
+    uint8 m_prevNodes[BG_BFG_DYNAMIC_NODES_COUNT];
+    BG_BFG_BannerTimer m_BannerTimers[BG_BFG_DYNAMIC_NODES_COUNT];
+    uint32 m_NodeTimers[BG_BFG_DYNAMIC_NODES_COUNT];
+    uint32 m_lastTick[BG_TEAMS_COUNT];
+    uint32 m_HonorScoreTics[BG_TEAMS_COUNT];
+    uint32 m_ReputationScoreTics[BG_TEAMS_COUNT];
+    bool m_IsInformedNearVictory;
+    uint32 m_HonorTics;
+    uint32 m_ReputationTics;
+    // need for achievements
+    bool m_TeamScores500Disadvantage[BG_TEAMS_COUNT];
+};
+#endif
