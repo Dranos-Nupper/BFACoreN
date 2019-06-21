@@ -152,3 +152,71 @@ void BattlegroundBFG::PostUpdateImpl(uint32 diff)
             EndBattleground(HORDE);
     }
 }
+
+void BattlegroundBFG::StartingEventCloseDoors()
+{
+    // despawn banners, auras and buffs
+    for (int obj = BG_BG_OBJECT_BANNER_NEUTRAL; obj < BG_BFG_DYNAMIC_NODES_COUNT * 8; ++obj)
+        SpawnBGObject(obj, RESPAWN_ONE_DAY);
+    for (int i = 0; i < BG_BFG_DYNAMIC_NODES_COUNT * 3; ++i)
+        SpawnBGObject(BG_BG_OBJECT_SPEEDBUFF_LIGHTHOUSE + i, RESPAWN_ONE_DAY);
+
+    // Starting doors
+    DoorClose(BG_BG_OBJECT_GATE_A);
+    DoorClose(BG_BG_OBJECT_GATE_H);
+    SpawnBGObject(BG_BG_OBJECT_GATE_A, RESPAWN_IMMEDIATELY);
+    SpawnBGObject(BG_BG_OBJECT_GATE_H, RESPAWN_IMMEDIATELY);
+
+    // Starting base spirit guides
+    _NodeOccupied(BG_BFG_SPIRIT_ALIANCE, ALLIANCE);
+    _NodeOccupied(BG_BFG_SPIRIT_HORDE, HORDE);
+}
+
+void BattlegroundBFG::StartingEventOpenDoors()
+{
+    // spawn neutral banners
+    for (int banner = BG_BG_OBJECT_BANNER_NEUTRAL, i = 0; i < 3; banner += 8, ++i)
+        SpawnBGObject(banner, RESPAWN_IMMEDIATELY);
+    for (int i = 0; i < BG_BFG_DYNAMIC_NODES_COUNT; ++i)
+    {
+        //randomly select buff to spawn
+        uint8 buff = urand(0, 2);
+        SpawnBGObject(BG_BG_OBJECT_SPEEDBUFF_LIGHTHOUSE + buff + i * 3, RESPAWN_IMMEDIATELY);
+    }
+    DoorOpen(BG_BG_OBJECT_GATE_A);
+    DoorOpen(BG_BG_OBJECT_GATE_H);
+}
+
+void BattlegroundBFG::AddPlayer(Player* player)
+{
+    Battleground::AddPlayer(player);
+    //create score and add it to map, default values are set in the constructor
+    BattlegroundBFGScore* sc = new BattlegroundBFGScore(player->GetGUID(), player->GetBGTeam());
+
+    PlayerScores[player->GetGUID()] = sc;
+}
+
+void BattlegroundBFG::RemovePlayer(Player* /*player*/, ObjectGuid /*guid*/, uint32 /*team*/)
+{
+}
+
+void BattlegroundBFG::HandleAreaTrigger(Player* player, uint32 trigger, bool entered)
+{
+    if (GetStatus() != STATUS_IN_PROGRESS)
+        return;
+    //Area triggers are not handled yet!
+    return;
+
+    switch (trigger)
+    {
+    case 3866:                                          // Lighthouse
+    case 3869:                                          // Watterwork
+    case 3867:                                          // Mine
+    case 4020:                                          // Unk1
+    case 4021:                                          // Unk2
+                                                        //break;
+    default:
+        Battleground::HandleAreaTrigger(player, trigger, entered);
+        break;
+    }
+}
