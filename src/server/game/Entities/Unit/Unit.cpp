@@ -2097,22 +2097,31 @@ void Unit::AttackerStateUpdate(Unit* victim, WeaponAttackType attType, bool extr
         m_currentSpells[CURRENT_MELEE_SPELL]->cast();
     else
     {
-        // attack can be redirected to another target
-        victim = GetMeleeHitRedirectTarget(victim);
+        std::list<AuraEffect*> meleeAttackOverrides = GetAuraEffectsByType(SPELL_AURA_OVERRIDE_AUTOATTACK_WITH_MELEE_SPELL);
+        if (!meleeAttackOverrides.empty())
+        {
+            for (AuraEffect* effect : meleeAttackOverrides)
+                CastSpell(victim, effect->GetSpellEffectInfo()->TriggerSpell, true, nullptr, effect);
+        }
+        else
+        {
+            // attack can be redirected to another target
+            victim = GetMeleeHitRedirectTarget(victim);
 
-        CalcDamageInfo damageInfo;
-        CalculateMeleeDamage(victim, 0, &damageInfo, attType);
-        // Send log damage message to client
+            CalcDamageInfo damageInfo;
+            CalculateMeleeDamage(victim, 0, &damageInfo, attType);
+            // Send log damage message to client
         DealDamageMods(victim, damageInfo.damage, &damageInfo.absorb, DIRECT_DAMAGE);
-        SendAttackStateUpdate(&damageInfo);
+            SendAttackStateUpdate(&damageInfo);
 
-        DealMeleeDamage(&damageInfo, true);
+            DealMeleeDamage(&damageInfo, true);
 
-        DamageInfo dmgInfo(damageInfo);
-        ProcSkillsAndAuras(damageInfo.target, damageInfo.procAttacker, damageInfo.procVictim, PROC_SPELL_TYPE_NONE, PROC_SPELL_PHASE_NONE, dmgInfo.GetHitMask(), nullptr, &dmgInfo, nullptr);
+            DamageInfo dmgInfo(damageInfo);
+            ProcSkillsAndAuras(damageInfo.target, damageInfo.procAttacker, damageInfo.procVictim, PROC_SPELL_TYPE_NONE, PROC_SPELL_PHASE_NONE, dmgInfo.GetHitMask(), nullptr, &dmgInfo, nullptr);
 
-        TC_LOG_DEBUG("entities.unit", "AttackerStateUpdate: %s attacked %s for %u dmg, absorbed %u, blocked %u, resisted %u.",
-            GetGUID().ToString().c_str(), victim->GetGUID().ToString().c_str(), damageInfo.damage, damageInfo.absorb, damageInfo.blocked_amount, damageInfo.resist);
+            TC_LOG_DEBUG("entities.unit", "AttackerStateUpdate: %s attacked %s for %u dmg, absorbed %u, blocked %u, resisted %u.",
+                GetGUID().ToString().c_str(), victim->GetGUID().ToString().c_str(), damageInfo.damage, damageInfo.absorb, damageInfo.blocked_amount, damageInfo.resist);
+        }
     }
 }
 
