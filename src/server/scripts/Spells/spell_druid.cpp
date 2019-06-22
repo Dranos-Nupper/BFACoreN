@@ -76,7 +76,7 @@ enum DruidSpells
     SPELL_DRUID_EMPOWERMENT                         = 279708,
     SPELL_DRUID_FERAL_FRENZY                        = 274837,
     SPELL_DRUID_FERAL_FRENZY_TRIGGER                = 274838
-
+    SPELL_DRUID_RESTO_MASTERY                       = 77495,
 };
 
 enum ShapeshiftFormSpells
@@ -3325,6 +3325,153 @@ public:
     }
 };
 
+////Añadıdo By Mıstıx WoW-CCN////
+// 77495 - Mastery Resto Druid
+class aura_dru_resto_mastery : public SpellScriptLoader
+{
+public:
+    aura_dru_resto_mastery() : SpellScriptLoader("aura_dru_resto_mastery") {}
+
+
+
+    class aura_dru_resto_mastery_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(aura_dru_resto_mastery_AuraScript);
+
+        // Creating a vector with posibles id of auras HoT
+        const std::vector<uint32> PosibleHoTs =
+        {
+            33763, // Flor d evida
+            8936,  // Recrecimiento
+            48438, // Crecimiento salvaje
+            774   // Rejuvenecimiento
+        };
+
+        int32 realHeal = -1;
+
+        void HandleEffectPeriodic(AuraEffect const* aurEff)
+        {
+            Unit* caster = GetCaster();
+            Unit* target = GetTarget();
+            if (!caster || !target)
+                return;
+
+            if (!target->IsFriendlyTo(caster))
+                target = caster;
+
+            if (Aura* mastery = caster->GetAura(SPELL_DRUID_RESTO_MASTERY))
+            {
+                // Getting the percent mastery of the restoration druid
+                int32 mastery_percent = mastery->GetEffect(EFFECT_0)->GetAmount();
+
+                // To store the amount of Hots that de target has
+                int8 amount_hots = 0;
+
+                for (uint32 hot : PosibleHoTs)
+                {
+                    if (target->HasAura(hot, caster->GetGUID()) /*&& GetAura()->GetSpellInfo()->Id != hot*/)
+                    {
+                        uint8 stackAmount = target->GetAura(hot, caster->GetGUID())->GetStackAmount();
+                        amount_hots += stackAmount;
+                    }
+                }
+
+                int32 percentage_to_apply = mastery_percent * amount_hots;
+
+                if (realHeal < 0)
+                    realHeal = aurEff->GetDamage();
+
+                int32 extraheal = CalculatePct(realHeal, percentage_to_apply);
+                int32 heal = extraheal + realHeal;
+
+
+                if (Aura* aura = GetAura())
+                    if (aura->GetEffect(aurEff->GetEffIndex()))
+                        aura->GetEffect(aurEff->GetEffIndex())->SetDamage(heal);
+
+            }
+        }
+
+        void Register() override
+        {
+            // Se ponen para los efectos 0 y 1 porque hay hot que tienen el periodic heal en el efecto 1 y otros en el efecto 0
+            OnEffectPeriodic += AuraEffectPeriodicFn(aura_dru_resto_mastery_AuraScript::HandleEffectPeriodic, EFFECT_0, SPELL_AURA_PERIODIC_HEAL);
+            OnEffectPeriodic += AuraEffectPeriodicFn(aura_dru_resto_mastery_AuraScript::HandleEffectPeriodic, EFFECT_1, SPELL_AURA_PERIODIC_HEAL);
+        }
+    };
+
+    class aura_dru_resto_mastery_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(aura_dru_resto_mastery_SpellScript);
+
+        // Creating a vector with posibles id of auras HoT
+        const std::vector<uint32> PosibleHoTs =
+        {
+            33763, // Flor d evida
+            8936,  // Recrecimiento
+            48438, // Crecimiento salvaje
+            774   // Rejuvenecimiento
+        };
+
+        void HandleOnHit()
+        {
+            Unit* caster = GetCaster();
+            Unit* target = GetExplTargetUnit();
+            if (!caster)
+                return;
+            if (!target)
+                target = caster;
+
+
+            if (!target->IsFriendlyTo(caster))
+                target = caster;
+
+            if (Aura* mastery = caster->GetAura(SPELL_DRUID_RESTO_MASTERY))
+            {
+                // Getting the percent mastery of the restoration druid
+                int32 mastery_percent = mastery->GetEffect(EFFECT_0)->GetAmount();
+
+                // To store the amount of Hots that de target has
+                int8 amount_hots = 0;
+
+                for (uint32 hot : PosibleHoTs)
+                {
+                    if (target->HasAura(hot, caster->GetGUID()))
+                    {
+                        uint8 stackAmount = target->GetAura(hot, caster->GetGUID())->GetStackAmount();
+                        amount_hots += stackAmount;
+                    }
+                }
+
+                int32 percentage_to_apply = mastery_percent * amount_hots;
+
+                int32 realHeal = GetHitHeal();
+
+                int32 extraheal = CalculatePct(realHeal, percentage_to_apply);
+                int32 heal = extraheal + realHeal;
+
+                SetHitHeal(heal);
+            }
+
+        }
+
+        void Register() override
+        {
+            OnHit += SpellHitFn(aura_dru_resto_mastery_SpellScript::HandleOnHit);
+        }
+    };
+
+    SpellScript* GetSpellScript() const override
+    {
+        return new aura_dru_resto_mastery_SpellScript();
+    }
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new aura_dru_resto_mastery_AuraScript();
+    }
+};
+
 void AddSC_druid_spell_scripts()
 {
     // Spells Scripts
@@ -3387,6 +3534,7 @@ void AddSC_druid_spell_scripts()
     RegisterAuraScript(aura_dru_frenzied_regeneration);
     new spell_dru_galactic_guardian;
 
+    new aura_dru_resto_mastery();
     new spell_dru_rejuvenation();
     new spell_dru_germination();
     new spell_dru_ironbark();
