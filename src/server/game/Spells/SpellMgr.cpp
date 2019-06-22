@@ -3547,6 +3547,26 @@ void SpellMgr::LoadSpellInfoCorrections()
         108858, // Summon Tiger Stand
         104450, // Summon Ji Yuan
         104571, // Summon Aysa
+    //
+    // ANTORUS THE BURNING THRONE SPELLS
+    //
+
+    // Decimation
+    ApplySpellFix({ 244449 }, [](SpellInfo* spellInfo)
+    {
+        // For some reason there is a instakill effect that serves absolutely no purpose.
+        // Until we figure out what it's actually used for we disable it.
+        const_cast<SpellEffectInfo*>(spellInfo->GetEffect(EFFECT_2))->Effect = 0;
+    });
+
+    // Annihilation
+    ApplySpellFix({ 244761 }, [](SpellInfo* spellInfo)
+    {
+        spellInfo->AttributesCu |= SPELL_ATTR0_CU_SHARE_DAMAGE;
+    });
+
+    // ENDOF ANTORUS THE BURNING THRONE SPELLS
+
         126040, // Summon Master Shang Xi
         115334, // Summon Aysa
         115336, // Summon Ji
