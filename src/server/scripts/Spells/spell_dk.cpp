@@ -2623,6 +2623,57 @@ struct at_dk_decomposing_aura : AreaTriggerAI
     }
 };
 
+/////////////////////////////
+// ADDED BY Mıstıx CCN-WOW
+class spell_dk_outbreakaura : public SpellScriptLoader
+{
+public:
+    spell_dk_outbreakaura() : SpellScriptLoader("spell_dk_outbreakaura") {}
+
+    class spell_dk_outbreakaura_AuraScript : public AuraScript
+    {
+        PrepareAuraScript(spell_dk_outbreakaura_AuraScript);
+
+        void OnTic(AuraEffect const* aurEff)
+        {
+            Unit* caster = GetCaster();
+            Unit* target = GetTarget();
+
+            if (!caster || !target)
+                return;
+
+            std::list<Creature*> creatures = target->FindAllCreaturesInRange(8.0f);
+            std::list<Unit*> units;
+            target->GetAttackableUnitListInRange(units, 8.0f);
+            for (Unit* unit : units)
+            {
+                if (unit != caster)
+                    if (!unit->IsFriendlyTo(caster))
+                        if (!unit->HasAura(SPELL_DK_VIRULENT_PLAGUE, caster->GetGUID()))
+                        {
+                            caster->CastSpell(unit, SPELL_DK_VIRULENT_PLAGUE, true);
+                        }
+            }
+            for (Creature* creature : creatures)
+            {
+                if (!creature->IsFriendlyTo(caster))
+                    if (!creature->HasAura(SPELL_DK_VIRULENT_PLAGUE, caster->GetGUID()))
+                        caster->CastSpell(creature, SPELL_DK_VIRULENT_PLAGUE, true);
+            }
+        }
+
+        void Register() override
+        {
+            OnEffectPeriodic += AuraEffectPeriodicFn(spell_dk_outbreakaura_AuraScript::OnTic, EFFECT_0, SPELL_AURA_PERIODIC_DUMMY);
+        }
+    };
+
+    AuraScript* GetAuraScript() const override
+    {
+        return new spell_dk_outbreakaura_AuraScript();
+    }
+};
+
 void AddSC_deathknight_spell_scripts()
 {
     new spell_dk_advantage_t10_4p();
@@ -2688,4 +2739,6 @@ void AddSC_deathknight_spell_scripts()
     RegisterAreaTriggerAI(at_dk_defile);
     RegisterSpellScript(spell_dk_blighted_rune_weapon);
     RegisterAreaTriggerAI(at_dk_decomposing_aura);
+//////////////////////////////////////////////////////////////
+    new spell_dk_outbreakaura();
 }
