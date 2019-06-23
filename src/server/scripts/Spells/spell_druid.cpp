@@ -75,7 +75,7 @@ enum DruidSpells
     SPELL_DRUID_SOLAR_EMPOWERMENT                   = 164545,
     SPELL_DRUID_EMPOWERMENT                         = 279708,
     SPELL_DRUID_FERAL_FRENZY                        = 274837,
-    SPELL_DRUID_FERAL_FRENZY_TRIGGER                = 274838
+    SPELL_DRUID_FERAL_FRENZY_TRIGGER                = 274838,
     SPELL_DRUID_RESTO_MASTERY                       = 77495,
 };
 
