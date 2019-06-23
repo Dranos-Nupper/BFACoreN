@@ -7,6 +7,8 @@ UPDATE `creature_template` SET `minlevel`= 113, `maxlevel`= 113, `faction`= 14, 
 UPDATE `creature_template` SET `minlevel`= 113, `maxlevel`= 113, `faction`= 14, `unit_class`= 1, `InhabitType`= 12, `unit_flags`= 33554432, `unit_flags2`= 32768, `baseattacktime`= 1500, `VehicleId`= 5430 WHERE `entry`= 122773;
 -- Annihilation
 UPDATE `creature_template` SET `minlevel`= 113, `maxlevel`= 113, `faction`= 14, `unit_class`= 1, `InhabitType`= 8, `unit_flags`= 33554432, `unit_flags2`= 2048, `flags_extra`= 128 WHERE `entry`= 122818;
+-- Garothi Worldbreaker (Surging Fel)
+UPDATE `creature_template` SET `minlevel`= 113, `maxlevel`= 113, `faction`= 14, `unit_class`= 1, `InhabitType`= 12, `unit_flags`= 33554432, `unit_flags2`= 34816, `flags_extra`= 128 WHERE `entry`= 124167;
 
 -- Spells
 DELETE FROM `spell_script_names` WHERE `ScriptName` IN 
@@ -22,7 +24,8 @@ DELETE FROM `spell_script_names` WHERE `ScriptName` IN
 'spell_garothi_carnage',
 'spell_garothi_annihilation_selector',
 'spell_garothi_annihilation_triggered',
-'spell_garothi_eradication');
+'spell_garothi_eradication',
+'spell_garothi_surging_fel');
 
 INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (244152, 'spell_garothi_apocalypse_drive'),
@@ -37,14 +40,15 @@ INSERT INTO `spell_script_names` (`spell_id`, `ScriptName`) VALUES
 (244106, 'spell_garothi_carnage'),
 (247572, 'spell_garothi_annihilation_selector'),
 (244761, 'spell_garothi_annihilation_triggered'),
-(244969, 'spell_garothi_eradication');
+(244969, 'spell_garothi_eradication'),
+(246655, 'spell_garothi_surging_fel');
 
 -- Addons
 DELETE FROM `creature_template_addon` WHERE `entry` IN (122450, 122778, 122773);
 INSERT INTO `creature_template_addon` (`entry`, `path_id`, `mount`, `bytes1`, `bytes2`, `emote`, `auras`) VALUES
-(122450, 0, 0, 50331648, 1, 0, '246839'), -- 122450 (Garothi Worldbreaker) - Helmet
-(122778, 0, 0, 0, 1, 0, '107829'), -- 122778 (Annihilator) - Update Interactions
-(122773, 0, 0, 0, 1, 0, '107829'); -- 122773 (Decimator) - Update Interactions
+(122450, 0, 0, 0, 0, 0, '246839'), -- 122450 (Garothi Worldbreaker) - Helmet
+(122778, 0, 0, 0, 0, 0, '107829'), -- 122778 (Annihilator) - Update Interactions
+(122773, 0, 0, 0, 0, 0, '107829'); -- 122773 (Decimator) - Update Interactions
 
 -- Texts
 DELETE FROM `creature_text` WHERE `CreatureID` IN (122450, 122773);
@@ -80,7 +84,17 @@ INSERT INTO `conditions` (`SourceTypeOrReferenceId`, `SourceGroup`, `SourceEntry
 SET @CGUID := 700001;
 DELETE FROM `creature` WHERE `guid` BETWEEN @CGUID+0 AND @CGUID+6;
 INSERT INTO `creature` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnDifficulties`, `PhaseId`, `PhaseGroup`, `modelid`, `equipment_id`, `position_x`, `position_y`, `position_z`, `orientation`, `spawntimesecs`, `spawndist`, `currentwaypoint`, `curhealth`, `curmana`, `MovementType`, `npcflag`, `unit_flags`, `dynamicflags`, `VerifiedBuild`) VALUES
-(@CGUID+0, 122450, 1712, 8638, 9280, "14,15,16,17", 169, 0, 0, 0, -3292.458, 9822.647, -63.49804, 4.729585, 7200, 0, 0, 0, 0, 0, 0, 0, 0, 26365); -- Garothi Worldbreaker (Area: -Unknown- - Difficulty: 17) (Auras: 246839 - -Unknown-)
+(@CGUID+0, 122450, 1712, 8638, 9280, "14,15,16,17", 169, 0, 0, 0, -3292.458, 9822.647, -63.49804, 4.729585, 7200, 0, 0, 0, 0, 0, 0, 0, 0, 26365); -- Garothi Worldbreaker
+
+-- Summon Groups
+DELETE FROM `creature_summon_groups` WHERE `summonerId`= 122450 AND `summonerType`= 0;
+INSERT INTO `creature_summon_groups` (`summonerId`, `summonerType`, `groupId`, `entry`, `position_x`, `position_y`, `position_z`, `orientation`, `summonType`, `summonTime`) VALUES
+-- SUMMON_GROUP_ID_SURGING_FEL = 0
+(122450, 0, 0, 124167, -3262, 9810.797, -63.93631, 4.577713, 8, 0),
+(122450, 0, 0, 124167, -3277, 9810.8, -63.68398, 4.577713, 8, 0),
+(122450, 0, 0, 124167, -3307, 9810.8, -63.85229, 4.577713, 8, 0),
+(122450, 0, 0, 124167, -3322, 9810.8, -64.84264, 4.577713, 8, 0),
+(122450, 0, 0, 124167, -3292, 9810.797, -64.07504, 4.577713, 8, 0);
 
 -- Vehicle Accessories
 DELETE FROM `vehicle_template_accessory` WHERE `entry`= 122450;
@@ -101,13 +115,22 @@ INSERT INTO `creature_model_info` (`DisplayID`, `BoundingRadius`, `CombatReach`,
 (77029, 3.944656, 75, 0);
 
 -- Areatriggers
-DELETE FROM `areatrigger_template` WHERE `Id` IN (15496);
+DELETE FROM `areatrigger_template` WHERE `Id` IN (15496, 0);
 INSERT INTO `areatrigger_template` (`Id`, `Type`, `Flags`, `Data0`, `Data1`, `Data2`, `Data3`, `Data4`, `Data5`, `ScriptName`, `VerifiedBuild`) VALUES
-(15496, 0, 4, 4, 4, 0, 0, 0, 0, 'at_garothi_annihilation', 26365);
+(15496, 0, 4, 4, 4, 0, 0, 0, 0, 'at_garothi_annihilation', 26365),
+(0, 3, 4, 0, 0, 0, 0, 0, 0, '', 26365);
 
-DELETE FROM `spell_areatrigger` WHERE `SpellMiscId`= 10662;
+DELETE FROM `spell_areatrigger` WHERE `SpellMiscId` IN (10662, 10876);
 INSERT INTO `spell_areatrigger` (`SpellMiscId`, `AreaTriggerId`) VALUES
-(10662, 15496);
+(10662, 15496),
+(10876, 0);
+
+DELETE FROM `areatrigger_template_polygon_vertices` WHERE `AreaTriggerId`= 0;
+INSERT INTO `areatrigger_template_polygon_vertices` (`AreaTriggerId`, `Idx`, `VerticeX`, `VerticeY`, `VerifiedBuild`) VALUES
+(0, 0, 0, -15, 26365),
+(0, 1, 0, 15, 26365),
+(0, 2, 100, -15, 26365),
+(0, 3, 100, -15, 26365);
 
 -- Procs
 DELETE FROM `spell_proc` WHERE `SpellId`= 244106;

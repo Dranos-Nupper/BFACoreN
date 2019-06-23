@@ -42,7 +42,8 @@ enum AntorusDataTypes
 
     // Encounter related data
     DATA_DECIMATOR,
-    DATA_ANNIHILATOR
+    DATA_ANNIHILATOR,
+    DATA_SURGING_FEL_DUMMIES
 };
 
 enum AntorusCreatureIds
@@ -55,6 +56,7 @@ enum AntorusCreatureIds
     NPC_DECIMATOR               = 122773,
     NPC_ANNIHILATOR             = 122778,
     NPC_ANNIHILATION            = 122818,
+    NPC_GAROTHI_WORLDBREAKER    = 124167
 };
 
 template <class AI, class T>

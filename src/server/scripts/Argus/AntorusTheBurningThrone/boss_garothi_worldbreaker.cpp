@@ -87,7 +87,12 @@ enum Spells
 
     // Annihilation
     SPELL_ANNIHILATION_AREA_TRIGGER             = 244795,
-    SPELL_ANNIHILATION_WARNING                  = 244799
+    SPELL_ANNIHILATION_WARNING                  = 244799,
+
+    // Garothi Worldbreaker (Surging Fel)
+    SPELL_SURGING_FEL_AREA_TRIGGER              = 246655,
+    SPELL_SURGING_FEL_DAMAGE                    = 246663
+
 };
 
 enum Events
@@ -97,7 +102,8 @@ enum Events
     EVENT_REENGAGE_PLAYERS,
     EVENT_FEL_BOMBARDMENT,
     EVENT_SEARING_BARRAGE,
-    EVENT_CANNON_CHOOSER
+    EVENT_CANNON_CHOOSER,
+    EVENT_SURGING_FEL
 };
 
 enum AnimKits
@@ -113,7 +119,8 @@ enum TargetSize : uint8
 
 enum Misc
 {
-    ENCOUNTER_ID_GAROTHI_WORLDBREAKER = 2076
+    SUMMON_GROUP_ID_SURGING_FEL         = 0,
+    ENCOUNTER_ID_GAROTHI_WORLDBREAKER   = 2076
 };
 
 namespace TargetHandler
@@ -180,12 +187,14 @@ struct boss_garothi_worldbreaker : public BossAI
         _searingBarrageSpellId = 0;
         _lastCanonEntry = NPC_DECIMATOR;
         _castEradication = false;
+        _surgingFelDummyGuids.clear(); // Todo: remove me after dynamic spawns have been merged
     }
 
     void Reset() override
     {
         _Reset();
         Initialize();
+        me->SummonCreatureGroup(SUMMON_GROUP_ID_SURGING_FEL);
     }
 
     void EnterCombat(Unit* /*who*/) override
@@ -221,14 +230,6 @@ struct boss_garothi_worldbreaker : public BossAI
         CleanupEncounter();
         instance->SendBossKillCredit(ENCOUNTER_ID_GAROTHI_WORLDBREAKER);
         instance->SendEncounterUnit(ENCOUNTER_FRAME_DISENGAGE, me);
-    }
-
-    void JustRegisteredAreaTrigger(AreaTrigger* at) override
-    {
-    }
-
-    void JustUnregisteredAreaTrigger(AreaTrigger* at) override
-    {
     }
 
     void SpellHit(Unit* /*caster*/, SpellInfo const* spell) override
@@ -286,6 +287,8 @@ struct boss_garothi_worldbreaker : public BossAI
         switch (spell->Id)
         {
             case SPELL_APOCALYPSE_DRIVE_FINAL_DAMAGE:
+                if (_apocalypseDriveCount == 1)
+                    events.Reset();
                 events.ScheduleEvent(EVENT_REENGAGE_PLAYERS, 3s + 500ms);
                 HideCannons();
                 me->RemoveUnitFlag(UNIT_FLAG_NOT_SELECTABLE);
@@ -341,6 +344,9 @@ struct boss_garothi_worldbreaker : public BossAI
             case NPC_DECIMATOR:
                 summon->SetReactState(REACT_PASSIVE);
                 break;
+            case NPC_GAROTHI_WORLDBREAKER:
+                _surgingFelDummyGuids.insert(summon->GetGUID());
+                break;
             default:
                 break;
         }
@@ -362,8 +368,10 @@ struct boss_garothi_worldbreaker : public BossAI
                 else
                     _searingBarrageSpellId = SPELL_SEARING_BARRAGE_DECIMATOR;
 
-                events.ScheduleEvent(EVENT_SEARING_BARRAGE, 3s + 500ms);
+                if (_apocalypseDriveCount == 1)
+                    events.Reset();
 
+                events.ScheduleEvent(EVENT_SEARING_BARRAGE, 3s + 500ms);
                 events.ScheduleEvent(EVENT_REENGAGE_PLAYERS, 3s + 500ms);
                 _castEradication = true;
 
@@ -388,7 +396,7 @@ struct boss_garothi_worldbreaker : public BossAI
 
         events.Update(diff);
 
-        if (me->HasUnitState(UNIT_STATE_CASTING) || me->IsFocusing(nullptr, true))
+        if (me->HasUnitState(UNIT_STATE_CASTING) && !me->HasAura(SPELL_APOCALYPSE_DRIVE))
             return;
 
         while (uint32 eventId = events.ExecuteEvent())
@@ -401,6 +409,10 @@ struct boss_garothi_worldbreaker : public BossAI
                     me->InterruptNonMeleeSpells(true);
                     me->SetFacingTo(me->GetHomePosition().GetOrientation());
                     events.Reset();
+
+                    if (GetDifficulty() == DIFFICULTY_MYTHIC_RAID || GetDifficulty() == DIFFICULTY_HEROIC_RAID)
+                        events.ScheduleEvent(EVENT_SURGING_FEL, 8s);
+
                     DoCastSelf(SPELL_APOCALYPSE_DRIVE);
                     DoCastSelf(SPELL_APOCALYPSE_DRIVE_FINAL_DAMAGE);
                     Talk(SAY_ANNOUNCE_APOCALYPSE_DRIVE);
@@ -446,6 +458,17 @@ struct boss_garothi_worldbreaker : public BossAI
                     DoCastSelf(SPELL_CANNON_CHOOSER);
                     events.Repeat(16s);
                     break;
+                case EVENT_SURGING_FEL:
+                {
+                    GuidSet guids = _surgingFelDummyGuids;
+                    guids.erase(_lastSurgingFelDummyGuid);
+                    _lastSurgingFelDummyGuid = Trinity::Containers::SelectRandomContainerElement(guids);
+                    if (Creature* dummy = ObjectAccessor::GetCreature(*me, _lastSurgingFelDummyGuid))
+                        dummy->CastSpell(dummy, SPELL_SURGING_FEL_AREA_TRIGGER);
+
+                    events.Repeat(8s);
+                    break;
+                }
                 default:
                     break;
             }
@@ -461,6 +484,8 @@ struct boss_garothi_worldbreaker : public BossAI
      uint32 _searingBarrageSpellId;
      uint32 _lastCanonEntry;
      bool _castEradication;
+     ObjectGuid _lastSurgingFelDummyGuid;
+     GuidSet _surgingFelDummyGuids;
 
      void CleanupEncounter()
      {
@@ -828,6 +853,27 @@ class spell_garothi_eradication : public SpellScript
     }
 };
 
+class spell_garothi_surging_fel : public AuraScript
+{
+    PrepareAuraScript(spell_garothi_surging_fel);
+
+    bool Validate(SpellInfo const* /*spellInfo*/) override
+    {
+        return ValidateSpellInfo({ SPELL_SURGING_FEL_DAMAGE });
+    }
+
+    void AfterRemove(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
+    {
+        if (GetTargetApplication()->GetRemoveMode() == AURA_REMOVE_BY_EXPIRE)
+            GetTarget()->CastSpell(GetTarget(), SPELL_SURGING_FEL_DAMAGE, true);
+    }
+
+    void Register() override
+    {
+        AfterEffectRemove += AuraEffectRemoveFn(spell_garothi_surging_fel::AfterRemove, EFFECT_0, SPELL_AURA_AREA_TRIGGER, AURA_EFFECT_HANDLE_REAL);
+    }
+};
+
 void AddSC_boss_garothi_worldbreaker()
 {
     RegisterAntorusTheBurningThroneCreatureAI(boss_garothi_worldbreaker);
@@ -844,4 +890,5 @@ void AddSC_boss_garothi_worldbreaker()
     RegisterSpellScript(spell_garothi_annihilation_selector);
     RegisterSpellScript(spell_garothi_annihilation_triggered);
     RegisterSpellScript(spell_garothi_eradication);
+    RegisterAuraScript(spell_garothi_surging_fel);
 }
