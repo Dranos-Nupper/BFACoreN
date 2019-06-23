@@ -307,6 +307,7 @@ struct boss_garothi_worldbreaker : public BossAI
                 if ((me->HealthBelowPctDamaged(65, damage) && _apocalypseDriveCount == 0)
                     || me->HealthBelowPctDamaged(35, damage) && _apocalypseDriveCount == 1)
                 {
+                    me->InterruptNonMeleeSpells(true);
                     events.ScheduleEvent(EVENT_APOCALYPSE_DRIVE, 1ms);
                     _apocalypseDriveCount++;
                 }
@@ -316,6 +317,7 @@ struct boss_garothi_worldbreaker : public BossAI
                 if ((me->HealthBelowPctDamaged(60, damage) && _apocalypseDriveCount == 0)
                     || me->HealthBelowPctDamaged(20, damage) && _apocalypseDriveCount == 1)
                 {
+                    me->InterruptNonMeleeSpells(true);
                     events.ScheduleEvent(EVENT_APOCALYPSE_DRIVE, 1ms);
                     _apocalypseDriveCount++;
                 }
@@ -356,7 +358,6 @@ struct boss_garothi_worldbreaker : public BossAI
     {
         switch (summon->GetEntry())
         {
-           
             case NPC_DECIMATOR:
             case NPC_ANNIHILATOR:
                 me->InterruptNonMeleeSpells(true);
@@ -381,7 +382,6 @@ struct boss_garothi_worldbreaker : public BossAI
                     DoCastSelf(SPELL_ANNIHILATOR_CANNON_EJECT);
 
                 me->PlayOneShotAnimKitId(ANIM_KIT_ID_CANNON_DESTROYED);
-
                 HideCannons();
                 break;
             default:

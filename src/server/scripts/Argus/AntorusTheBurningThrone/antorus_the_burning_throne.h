@@ -42,8 +42,7 @@ enum AntorusDataTypes
 
     // Encounter related data
     DATA_DECIMATOR,
-    DATA_ANNIHILATOR,
-    DATA_SURGING_FEL_DUMMIES
+    DATA_ANNIHILATOR
 };
 
 enum AntorusCreatureIds
