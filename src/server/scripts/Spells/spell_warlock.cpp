@@ -1004,79 +1004,43 @@ class spell_warlock_grimoire_of_sacrifice : public SpellScriptLoader
 };
 
 // Healthstone - 6262
-class spell_warlock_healthstone_heal : public SpellScriptLoader
+class spell_warlock_healthstone : public SpellScriptLoader
 {
-    public:
-        spell_warlock_healthstone_heal() : SpellScriptLoader("spell_warlock_healthstone_heal") { }
+public:
+    spell_warlock_healthstone() : SpellScriptLoader("spell_warlock_healthstone") { }
 
-        class spell_warlock_healthstone_heal_SpellScript : public SpellScript
+    class spell_warlock_healthstone_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_warlock_healthstone_SpellScript);
+
+        enum eSpells
         {
-            PrepareSpellScript(spell_warlock_healthstone_heal_SpellScript);
-
-            void HandleOnHit()
-            {
-                // Glyph of Healthstone
-                if (GetCaster()->HasAura(SPELL_WARLOCK_GLYPH_OF_HEALTHSTONE))
-                {
-                    PreventHitHeal();
-                    return;
-                }
-
-                Unit* caster = GetCaster();
-                if (!caster || !caster->ToPlayer())
-                    return;
-
-                std::list<Unit*> allies;
-                GetCaster()->GetFriendlyUnitListInRange(allies, 100.f);
-
-                for (Unit* unit : allies)
-                    if (unit->ToPlayer()->IsInSameRaidWith(caster->ToPlayer()))
-                        if (uint32 pct = unit->GetAuraEffectAmount(SPELL_WARLOCK_SWEET_SOULS, EFFECT_0))
-                            unit->CastCustomSpell(SPELL_WARLOCK_SWEET_SOULS_HEAL, SPELLVALUE_BASE_POINT0, pct, unit, true);
-            }
-
-            void Register() override
-            {
-                OnHit += SpellHitFn(spell_warlock_healthstone_heal_SpellScript::HandleOnHit);
-            }
+            GlyphOfHealthstone = 56224
         };
 
-        class spell_warlock_healthstone_heal_AuraScript : public AuraScript
+        void HandleHeal(SpellEffIndex /*p_EffIndex*/)
         {
-            PrepareAuraScript(spell_warlock_healthstone_heal_AuraScript);
-
-            void CalculateAmount(AuraEffect const* aurEff, int32 & amount, bool &)
-            {
-                Unit * caster = GetCaster();
-                if (!caster)
-                    return;
-
-                amount = 0;
-                // Glyph of Healthstone
-                if (Aura * glyph = caster->GetAura(SPELL_WARLOCK_GLYPH_OF_HEALTHSTONE))
-                {
-                    int32 heal = int32(CalculatePct(GetCaster()->GetMaxHealth(), GetSpellInfo()->GetEffect(EFFECT_1)->CalcValue(caster)));
-                    // manually calculate total ticks because aura duration isn't set yet by glyph's spellmod, it's still 0 when this code executes
-                    int32 totalTicks = glyph->GetEffect(EFFECT_1)->GetAmount() / aurEff->GetPeriod();
-                    amount = heal / totalTicks;
-                }
-            }
-
-            void Register() override
-            {
-                DoEffectCalcAmount += AuraEffectCalcAmountFn(spell_warlock_healthstone_heal_AuraScript::CalculateAmount, EFFECT_1, SPELL_AURA_PERIODIC_HEAL);
-            }
-        };
-
-        AuraScript* GetAuraScript() const override
-        {
-            return new spell_warlock_healthstone_heal_AuraScript();
+            if (GetCaster()->HasAura(eSpells::GlyphOfHealthstone))
+                PreventHitHeal();
         }
 
-        SpellScript* GetSpellScript() const override
+        void HandlePeriodicHeal(SpellEffIndex /*p_EffIndex*/)
         {
-            return new spell_warlock_healthstone_heal_SpellScript();
+            if (!GetCaster()->HasAura(eSpells::GlyphOfHealthstone))
+                PreventHitAura();
         }
+
+        void Register()
+        {
+            OnEffectHitTarget += SpellEffectFn(spell_warlock_healthstone_SpellScript::HandleHeal, EFFECT_0, SPELL_EFFECT_HEAL);
+            OnEffectHitTarget += SpellEffectFn(spell_warlock_healthstone_SpellScript::HandlePeriodicHeal, EFFECT_1, SPELL_EFFECT_APPLY_AURA);
+        }
+    };
+
+    SpellScript* GetSpellScript() const
+    {
+        return new spell_warlock_healthstone_SpellScript();
+    }
 };
 
 // Doomguard - 11859, Terrorguard - 59000
@@ -6269,6 +6233,40 @@ public:
     }
 };
 
+// 6201 - Create Healthstone
+class spell_warlock_create_healthstone : public SpellScriptLoader
+{
+public:
+    spell_warlock_create_healthstone() : SpellScriptLoader("spell_warlock_create_healthstone") { }
+
+    class spell_warlock_create_healthstone_SpellScript : public SpellScript
+    {
+        PrepareSpellScript(spell_warlock_create_healthstone_SpellScript);
+
+        enum eSpells
+        {
+            CreateHealthstone = 23517
+        };
+
+        void HandleAfterCast()
+        {
+            Unit* l_Caster = GetCaster();
+
+            l_Caster->CastSpell(l_Caster, CreateHealthstone, true);
+        }
+
+        void Register()
+        {
+            AfterCast += SpellCastFn(spell_warlock_create_healthstone_SpellScript::HandleAfterCast);
+        }
+    };
+
+    SpellScript* GetSpellScript() const
+    {
+        return new spell_warlock_create_healthstone_SpellScript();
+    }
+};
+
 void AddSC_warlock_spell_scripts()
 {
     // ADDED IN MOP
@@ -6279,7 +6277,7 @@ void AddSC_warlock_spell_scripts()
     new spell_warlock_immolation_aura;
     new npc_warlock_wild_imp;
     new spell_warlock_grimoire_of_sacrifice;
-    new spell_warlock_healthstone_heal;
+    new spell_warlock_healthstone();
     new spell_warlock_soul_swap_soulburn;
     new spell_warlock_unending_breath;
     new spell_warlock_chaos_bolt;
@@ -6395,6 +6393,7 @@ void AddSC_warlock_spell_scripts()
     new spell_warlock_soul_fire();
     new spell_warlock_rain_of_fire_damage();
     new spell_warlock_unending_resolve();
+    new spell_warlock_create_healthstone();
     RegisterSpellScript(spell_warlock_summon_darkglare);
 
     RegisterAreaTriggerAI(at_warlock_casting_circle);
