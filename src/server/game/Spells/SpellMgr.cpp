@@ -3547,6 +3547,19 @@ void SpellMgr::LoadSpellInfoCorrections()
         108858, // Summon Tiger Stand
         104450, // Summon Ji Yuan
         104571, // Summon Aysa
+        126040, // Summon Master Shang Xi
+        115334, // Summon Aysa
+        115336, // Summon Ji
+        115338, // Summon Jojo
+        115493, // Summon Aysa
+        115494, // Summon Ji
+        115495, // Summon Jojo
+        117597  // Summon Ji
+    }, [](SpellInfo* spellInfo)
+    {
+        const_cast<SpellEffectInfo*>(spellInfo->GetEffect(EFFECT_0))->TargetA = SpellImplicitTargetInfo(TARGET_DEST_DB);
+    });
+
     //
     // ANTORUS THE BURNING THRONE SPELLS
     //
@@ -3566,20 +3579,7 @@ void SpellMgr::LoadSpellInfoCorrections()
     });
 
     // ENDOF ANTORUS THE BURNING THRONE SPELLS
-
-        126040, // Summon Master Shang Xi
-        115334, // Summon Aysa
-        115336, // Summon Ji
-        115338, // Summon Jojo
-        115493, // Summon Aysa
-        115494, // Summon Ji
-        115495, // Summon Jojo
-        117597  // Summon Ji
-    }, [](SpellInfo* spellInfo)
-    {
-        const_cast<SpellEffectInfo*>(spellInfo->GetEffect(EFFECT_0))->TargetA = SpellImplicitTargetInfo(TARGET_DEST_DB);
-    });
-
+	
     // Taste of Iron Game Aura
     ApplySpellFix({ 164042 }, [](SpellInfo* spellInfo)
     {
